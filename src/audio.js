@@ -61,6 +61,21 @@ Sound.resume = function () {
   if (Sound.ctx && Sound.ctx.state === 'suspended') Sound.ctx.resume();
 };
 
+/* Safari on iOS keeps a fresh AudioContext suspended until something is
+   actually played from inside a user gesture, so play one silent sample. */
+Sound.unlock = function () {
+  Sound.resume();
+  if (!Sound.ctx) return;
+  try {
+    const b = Sound.ctx.createBuffer(1, 1, 22050);
+    const s = Sound.ctx.createBufferSource();
+    s.buffer = b;
+    s.connect(Sound.ctx.destination);
+    s.start(0);
+  } catch (e) { /* already running */ }
+  if (Sound._pending) { const k = Sound._pending; Sound._pending = null; Sound.music(k); }
+};
+
 Sound.setMuted = function (m) {
   Sound.muted = m;
   if (Sound.master) Sound.master.gain.setTargetAtTime(m ? 0 : 0.9, Sound.ctx.currentTime, 0.05);

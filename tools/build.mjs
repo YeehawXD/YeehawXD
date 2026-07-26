@@ -20,10 +20,13 @@ for (const src of order) {
 }
 
 let out = html;
-for (const src of order) out = out.replace(`<script src="${src}"></script>\n`, '');
-out = out.replace('</body>', `<script>\n${bundle}\n</script>\n</body>`);
-/* setupShot lives in the harness; stub it so the boot path is unchanged */
-out = out.replace('<script>\n\n/* ===== src/util.js', '<script>\nfunction setupShot() { return false; }\n\n/* ===== src/util.js');
+for (const src of order) {
+  out = out.replace(new RegExp(`[ \\t]*<script src="${src.replace(/[.*+?^$()|[\]\\]/g, '\\$&')}"></script>\\n?`), '');
+}
+/* setupShot lives in the capture harness, which isn't shipped; stub it so the
+   boot path is identical to the served build */
+out = out.replace('</body>', `<script>\nfunction setupShot() { return false; }\n${bundle}\n</script>\n</body>`);
+if (out.includes('<script src=')) throw new Error('a <script src> survived inlining');
 
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
 const dest = path.join(root, 'dist', 'norbert-unfinished.html');

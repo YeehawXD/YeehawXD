@@ -3,50 +3,231 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Norbert">
+<meta name="theme-color" content="#150f20">
 <title>Norbert, Unfinished</title>
 <meta name="description" content="A very short adventure about not being ready. Everything you can see is drawn out of maths at runtime.">
 <style>
+  :root {
+    --pad-key: 62px;          /* d-pad key size, re-set for landscape below */
+    --pad-big: 88px;          /* the jump button */
+    --clay-hi: #e9b489;
+    --clay-mid: #ce8459;
+    --clay-lo: #7e3a26;
+  }
+
   html, body {
-    margin: 0; padding: 0; height: 100%;
-    background: #0d0812;
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: #100b18;
     overflow: hidden;
+    position: fixed;
     -webkit-tap-highlight-color: transparent;
     -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
     touch-action: none;
     overscroll-behavior: none;
+    font: 600 15px "Trebuchet MS", "Segoe UI", Verdana, system-ui, sans-serif;
   }
-  body {
-    display: flex; align-items: center; justify-content: center;
-    background:
-      radial-gradient(ellipse at 50% 40%, #241a2c 0%, #0d0812 70%);
+
+  #shell {
+    position: fixed;
+    inset: 0;
+    padding:
+      env(safe-area-inset-top) env(safe-area-inset-right)
+      env(safe-area-inset-bottom) env(safe-area-inset-left);
+    display: flex;
+    flex-direction: column;
+    background: radial-gradient(ellipse at 50% 38%, #241a2c 0%, #100b18 72%);
   }
+
+  #stagewrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
   #game {
     display: block;
-    image-rendering: auto;
-    box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,220,180,0.05);
+    box-shadow: 0 18px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,220,180,.06);
     border-radius: 2px;
-    max-width: 100vw; max-height: 100vh;
   }
+
+  /* ---- boot veil ---- */
   #boot {
-    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-    color: #d9a678; font: 600 15px "Trebuchet MS", Verdana, sans-serif;
-    letter-spacing: 0.08em; pointer-events: none;
-    transition: opacity .6s ease; z-index: 5;
+    position: absolute; inset: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: center;
+    color: #d9a678; letter-spacing: .1em; font-size: 14px;
+    background: #100b18;
+    transition: opacity .5s ease;
   }
-  #boot.gone { opacity: 0; }
+  #boot.gone { opacity: 0; pointer-events: none; }
+
+  /* ================= on-screen controls ================= */
+  /* Hidden entirely on machines with a real keyboard; the game never shows
+     controls it does not need. */
+  #pad, #pausebtn { display: none; }
+  body.touch #pad { display: flex; }
+  body.touch #pausebtn { display: block; }
+
+  #pad {
+    flex: 0 0 auto;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px 14px;
+    box-sizing: border-box;
+  }
+
+  .cluster { display: grid; gap: 8px; }
+
+  .cluster.dpad {
+    grid-template-columns: repeat(3, var(--pad-key));
+    grid-template-rows: repeat(2, var(--pad-key));
+  }
+  .k-up    { grid-area: 1 / 2; }
+  .k-left  { grid-area: 2 / 1; }
+  .k-down  { grid-area: 2 / 2; }
+  .k-right { grid-area: 2 / 3; }
+
+  .cluster.acts {
+    grid-template-columns: var(--pad-key) var(--pad-big);
+    grid-template-rows: var(--pad-key) var(--pad-big);
+    align-items: end; justify-items: end;
+  }
+  .k-slurp { grid-area: 1 / 1 / 2 / 3; justify-self: end; width: calc(var(--pad-key) * 1.5); height: calc(var(--pad-key) * .78); }
+  .k-lob   { grid-area: 2 / 1; }
+  .k-jump  { grid-area: 2 / 2; width: var(--pad-big); height: var(--pad-big); font-size: 15px; }
+
+  .btn {
+    -webkit-appearance: none; appearance: none;
+    width: var(--pad-key); height: var(--pad-key);
+    border: 0; padding: 0; margin: 0;
+    display: grid; place-items: center;
+    font: 800 13px/1 "Trebuchet MS", "Segoe UI", Verdana, system-ui, sans-serif;
+    letter-spacing: .04em;
+    color: #40210f;
+    text-shadow: 0 1px 0 rgba(255,232,200,.45);
+    /* an irregular radius, because nothing here is a perfect circle */
+    border-radius: 47% 53% 51% 49% / 50% 48% 52% 50%;
+    background:
+      radial-gradient(115% 115% at 32% 26%, var(--clay-hi) 0%, var(--clay-mid) 42%, #b06038 74%, var(--clay-lo) 100%);
+    box-shadow:
+      inset 0 -4px 7px rgba(74,26,12,.42),
+      inset 0 3px 6px rgba(255,226,190,.42),
+      0 5px 12px rgba(8,3,14,.45);
+    transition: transform .06s ease, filter .06s ease;
+    touch-action: none;
+  }
+  .btn:nth-of-type(2n) { border-radius: 52% 48% 47% 53% / 49% 52% 48% 51%; }
+  .btn:nth-of-type(3n) { border-radius: 49% 51% 53% 47% / 52% 50% 50% 48%; }
+  .btn.on {
+    transform: translateY(3px) scale(.955);
+    filter: brightness(1.14) saturate(1.05);
+    box-shadow:
+      inset 0 -2px 5px rgba(74,26,12,.5),
+      inset 0 2px 8px rgba(120,44,20,.5),
+      0 2px 5px rgba(8,3,14,.5);
+  }
+  .btn .arrow { font-size: 20px; line-height: 1; }
+
+  #pausebtn {
+    position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    z-index: 12;
+    width: 44px; height: 30px;
+    border: 0; padding: 0;
+    border-radius: 8px 9px 8px 9px;
+    background: rgba(28,16,34,.55);
+    color: rgba(255,232,200,.75);
+    font: 800 13px/1 "Trebuchet MS", system-ui, sans-serif;
+    letter-spacing: .12em;
+    touch-action: none;
+  }
+  #pausebtn.on { background: rgba(58,32,60,.75); }
+
+  /* while a conversation is on screen the pad only gets in the way */
+  body.reading #pad { opacity: 0; pointer-events: none; }
+  #pad { transition: opacity .22s ease; }
+
+  /* ---- portrait: picture up top, control deck along the bottom ---- */
+  #hint { display: none; }
+  @media (orientation: portrait) {
+    /* sized off the viewport so both clusters always fit side by side */
+    :root { --pad-key: min(66px, 14.6vw); --pad-big: min(90px, 20vw); }
+    #stagewrap { align-items: flex-start; padding-top: 42px; }
+    #pad {
+      flex: 0 0 auto;
+      align-items: flex-end;
+      padding-bottom: max(18px, env(safe-area-inset-bottom));
+    }
+    body.reading #pad { opacity: .14; }
+    body.touch #hint {
+      display: block;
+      position: absolute; left: 0; right: 0; bottom: 18px;
+      text-align: center;
+      font: 600 12px/1.5 "Trebuchet MS", system-ui, sans-serif;
+      letter-spacing: .1em;
+      color: rgba(233,180,137,.42);
+      pointer-events: none;
+    }
+    body.reading #hint { opacity: 0; }
+  }
+
+  /* ---- landscape: controls float over the corners, out of the way ---- */
+  @media (orientation: landscape) {
+    :root { --pad-key: 54px; --pad-big: 74px; }
+    #pad {
+      position: absolute;
+      inset: auto 0 0 0;
+      height: auto;
+      pointer-events: none;
+      padding: 0 max(14px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-right));
+      z-index: 10;
+    }
+    .cluster { pointer-events: auto; }
+    .btn { opacity: .88; }
+  }
+
+  /* very short landscape (small phones): shrink so nothing overlaps the HUD */
+  @media (orientation: landscape) and (max-height: 380px) {
+    :root { --pad-key: 46px; --pad-big: 62px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .btn { transition: none; }
+  }
 </style>
 </head>
 <body>
-<canvas id="game" width="1920" height="1080"></canvas>
-<div id="boot">warming the clay…</div>
+<div id="shell">
+  <div id="stagewrap">
+    <canvas id="game" width="1920" height="1080"></canvas>
+    <button id="pausebtn" data-act="pause" aria-label="Pause">❚❚</button>
+    <div id="hint">turn your phone sideways for the full picture</div>
+    <div id="boot">warming the clay…</div>
+  </div>
 
-<script>
-  addEventListener('load', () => {
-    const b = document.getElementById('boot');
-    if (!b) return;
-    setTimeout(() => { b.classList.add('gone'); setTimeout(() => b.remove(), 700); }, 400);
-  });
-</script>
+  <div id="pad" aria-hidden="true">
+    <div class="cluster dpad">
+      <button class="btn k-up"    data-act="up"    aria-label="Stretch tall"><span class="arrow">▲</span></button>
+      <button class="btn k-left"  data-act="left"  aria-label="Left"><span class="arrow">◀</span></button>
+      <button class="btn k-down"  data-act="down"  aria-label="Squash flat"><span class="arrow">▼</span></button>
+      <button class="btn k-right" data-act="right" aria-label="Right"><span class="arrow">▶</span></button>
+    </div>
+    <div class="cluster acts">
+      <button class="btn k-slurp" data-act="slurp" aria-label="Slurp your pieces back">SLURP</button>
+      <button class="btn k-lob"   data-act="lob"   aria-label="Tear a piece off">TEAR</button>
+      <button class="btn k-jump"  data-act="jump"  aria-label="Jump">JUMP</button>
+    </div>
+  </div>
+</div>
+
 <script>
 function setupShot() { return false; }
 
@@ -779,9 +960,18 @@ Clay.grainPattern = function (ctx) {
   const g = c.getContext('2d');
   const img = g.createImageData(S, S);
   const d = img.data;
+  /* Mean-zero RGBA: half the grains lighten, half darken, most pixels are
+     clear. That lets the grain go down with plain source-over instead of an
+     'overlay' blend, which on a phone is the difference between a full-screen
+     destination read every frame and a cheap composite. */
   for (let i = 0; i < S * S; i++) {
-    const v = 118 + (Math.random() * 74 - 37) + (Math.random() * Math.random() * 30 - 8);
-    d[i * 4] = v; d[i * 4 + 1] = v; d[i * 4 + 2] = v; d[i * 4 + 3] = 255;
+    const v = Math.random();
+    const up = v > 0.5;
+    const a = Math.pow(Math.random(), 2.2) * 190;
+    d[i * 4] = up ? 255 : 0;
+    d[i * 4 + 1] = up ? 250 : 4;
+    d[i * 4 + 2] = up ? 235 : 12;
+    d[i * 4 + 3] = a;
   }
   g.putImageData(img, 0, 0);
   Clay._grainPat = ctx.createPattern(c, 'repeat');
@@ -813,20 +1003,42 @@ Clay.paperPattern = function (ctx) {
   return Clay._paperPat;
 };
 
-/* Film grain over the whole frame. Slides every stop-motion tick so it
-   crawls like real film rather than sitting there like a static overlay. */
-Clay.grain = function (ctx, w, h, alpha, scale) {
+/* Film grain over the whole frame.
+
+   Filling the screen with a repeating pattern every frame means sampling that
+   pattern per pixel, which on a phone costs more than the entire cast put
+   together. So the grain is baked once into a full-resolution sheet a little
+   larger than the screen, and each stop-motion tick blits it from a different
+   offset -- same crawl, one cheap composite. */
+Clay._grainSheet = null;
+Clay.grain = function (ctx, w, h, alpha, devScale) {
   if (!Clay.quality) return;
-  const pat = Clay.grainPattern(ctx);
+  const S = Math.max(1, devScale || 1);
+  const bw = Math.ceil(w * S), bh = Math.ceil(h * S);
+  const PAD = 96;
+  let sheet = Clay._grainSheet;
+  if (!sheet || sheet.w !== bw || sheet.h !== bh) {
+    const cv = document.createElement('canvas');
+    cv.width = bw + PAD; cv.height = bh + PAD;
+    const g = cv.getContext('2d');
+    const img = g.createImageData(cv.width, cv.height);
+    const d = img.data;
+    /* mean-zero speckle: half lightens, half darkens, most of it is clear */
+    for (let i = 0; i < cv.width * cv.height; i++) {
+      const up = Math.random() > 0.5;
+      d[i * 4] = up ? 255 : 0;
+      d[i * 4 + 1] = up ? 250 : 4;
+      d[i * 4 + 2] = up ? 235 : 12;
+      d[i * 4 + 3] = Math.pow(Math.random(), 2.2) * 200;
+    }
+    g.putImageData(img, 0, 0);
+    sheet = Clay._grainSheet = { cv, w: bw, h: bh };
+  }
+  const ox = (hash1(Clay.frame * 3.1) * PAD) | 0;
+  const oy = (hash1(Clay.frame * 7.7 + 3) * PAD) | 0;
   ctx.save();
-  ctx.globalCompositeOperation = 'overlay';
-  ctx.globalAlpha = alpha;
-  const ox = (hash1(Clay.frame * 3.1) * 128) | 0;
-  const oy = (hash1(Clay.frame * 7.7 + 3) * 128) | 0;
-  ctx.translate(-ox, -oy);
-  if (scale && scale !== 1) ctx.scale(scale, scale);
-  ctx.fillStyle = pat;
-  ctx.fillRect(0, 0, (w + 130) / (scale || 1), (h + 130) / (scale || 1));
+  ctx.globalAlpha = alpha * 2.6;
+  ctx.drawImage(sheet.cv, ox, oy, bw, bh, 0, 0, w, h);
   ctx.restore();
 };
 
@@ -849,6 +1061,33 @@ Clay.vignette = function (ctx, w, h, amount, tint) {
   g.addColorStop(1, tint ? rgba(tint, amount) : 'rgba(8,4,14,' + amount + ')');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
+};
+
+/* The lens, baked.
+
+   The vignette and the colour grade never change within a room, so paying for
+   two more full-screen passes every frame is pure waste -- on a phone they
+   cost more than the entire cast. Bake them into one translucent layer per
+   room and blit it. */
+Clay._lens = null;
+Clay.lens = function (ctx, w, h, key, amount, tint, gradeCol, gradeA) {
+  const id = key + '|' + Math.round(w) + 'x' + Math.round(h);
+  let L = Clay._lens;
+  if (!L || L.id !== id) {
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(w));
+    cv.height = Math.max(1, Math.round(h));
+    const g = cv.getContext('2d');
+    if (gradeCol && gradeA) {
+      /* the grade was an 'overlay' wash; at these strengths a straight tint
+         at a little under two thirds reads the same and costs nothing */
+      g.fillStyle = rgba(gradeCol, gradeA * 0.62);
+      g.fillRect(0, 0, cv.width, cv.height);
+    }
+    Clay.vignette(g, cv.width, cv.height, amount, tint);
+    L = Clay._lens = { id, cv };
+  }
+  ctx.drawImage(L.cv, 0, 0, L.cv.width, L.cv.height, 0, 0, w, h);
 };
 
 /* ---------------------------------------------------------------------- */
@@ -1711,6 +1950,21 @@ Sound.resume = function () {
   if (Sound.ctx && Sound.ctx.state === 'suspended') Sound.ctx.resume();
 };
 
+/* Safari on iOS keeps a fresh AudioContext suspended until something is
+   actually played from inside a user gesture, so play one silent sample. */
+Sound.unlock = function () {
+  Sound.resume();
+  if (!Sound.ctx) return;
+  try {
+    const b = Sound.ctx.createBuffer(1, 1, 22050);
+    const s = Sound.ctx.createBufferSource();
+    s.buffer = b;
+    s.connect(Sound.ctx.destination);
+    s.start(0);
+  } catch (e) { /* already running */ }
+  if (Sound._pending) { const k = Sound._pending; Sound._pending = null; Sound.music(k); }
+};
+
 Sound.setMuted = function (m) {
   Sound.muted = m;
   if (Sound.master) Sound.master.gain.setTargetAtTime(m ? 0 : 0.9, Sound.ctx.currentTime, 0.05);
@@ -2276,14 +2530,18 @@ Wipe.go = function (cb, color) {
 
 Wipe.update = function (dt) {
   if (!Wipe.active) return;
-  Wipe.t += dt / Wipe.dur;
-  if (Wipe.dir === 1 && Wipe.t >= 1) {
-    Wipe.t = 1; Wipe.dir = -1;
-    if (Wipe.cb) { Wipe.cb(); Wipe.cb = null; }
-  } else if (Wipe.dir === -1 && Wipe.t <= 0) {
-    Wipe.t = 0; Wipe.active = false; Wipe.dir = 0;
+  const step = dt / Wipe.dur;
+  if (Wipe.dir === 1) {
+    Wipe.t += step;
+    if (Wipe.t >= 1) {
+      Wipe.t = 1;
+      Wipe.dir = -1;
+      if (Wipe.cb) { Wipe.cb(); Wipe.cb = null; }
+    }
+  } else {
+    Wipe.t -= step * 1.4;              /* pull back a little faster than it came */
+    if (Wipe.t <= 0) { Wipe.t = 0; Wipe.active = false; Wipe.dir = 0; }
   }
-  if (Wipe.dir === -1) Wipe.t -= dt / Wipe.dur * 0.6;
 };
 
 Wipe.draw = function (ctx, W, H) {
@@ -2319,15 +2577,24 @@ Wipe.draw = function (ctx, W, H) {
 /* ===== src/input.js ===== */
 /* =========================================================================
    NORBERT, UNFINISHED  --  input.js
-   Keyboard, gamepad and (for phones) a set of on-screen clay buttons.
+   Keyboard, gamepad, and the on-screen controls.
+
+   The touch pad is real DOM buttons rather than rectangles painted into the
+   canvas. That gets safe-area insets, crisp text and correct hit testing for
+   free, and it means the d-pad can live below the picture in portrait and
+   float over the corners in landscape without the game knowing anything
+   about it.
+
+   Touches are resolved with elementFromPoint on every move rather than with
+   pointer capture, so you can roll your thumb from LEFT to RIGHT without
+   lifting it -- which is how people actually play platformers on a phone.
    ========================================================================= */
 
 const Input = {
   held: {}, pressed: {}, released: {},
   touch: false,
-  pointer: { x: 0, y: 0, down: false },
-  zones: [],          // on-screen buttons, filled in by ui.js
   anyKey: false,
+  _btns: {},
 };
 
 const KEYMAP = {
@@ -2341,128 +2608,167 @@ const KEYMAP = {
   KeyE: 'talk', Enter: 'talk',
   Escape: 'pause', KeyP: 'pause',
   KeyM: 'mute',
-  KeyF: 'fullscreen',
 };
 
+Input.press = function (a) {
+  if (!a) return;
+  if (!Input.held[a]) Input.pressed[a] = true;
+  Input.held[a] = true;
+  Input._paint(a, true);
+};
+
+Input.release = function (a) {
+  if (!a) return;
+  if (Input.held[a]) Input.released[a] = true;
+  Input.held[a] = false;
+  Input._paint(a, false);
+};
+
+Input._paint = function (a, on) {
+  const list = Input._btns[a];
+  if (list) for (const el of list) el.classList.toggle('on', on);
+};
+
+/* ---------------------------------------------------------------------- */
+
 Input.attach = function (canvas) {
+  /* ---- keyboard ---- */
   addEventListener('keydown', (e) => {
+    Input.anyKey = true;
     const a = KEYMAP[e.code];
     if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
-    Input.anyKey = true;
-    if (!a) return;
-    if (!Input.held[a]) Input.pressed[a] = true;
-    Input.held[a] = true;
+    if (a) Input.press(a);
   });
   addEventListener('keyup', (e) => {
     const a = KEYMAP[e.code];
-    if (!a) return;
-    Input.held[a] = false;
-    Input.released[a] = true;
+    if (a) Input.release(a);
   });
-  addEventListener('blur', () => { Input.held = {}; });
+  addEventListener('blur', () => {
+    for (const a in Input.held) Input.release(a);
+  });
 
-  const pt = (e) => {
-    const r = canvas.getBoundingClientRect();
-    return {
-      x: (e.clientX - r.left) / r.width,
-      y: (e.clientY - r.top) / r.height,
-    };
+  /* ---- on-screen buttons ---- */
+  for (const el of document.querySelectorAll('[data-act]')) {
+    const a = el.dataset.act;
+    (Input._btns[a] || (Input._btns[a] = [])).push(el);
+  }
+
+  const actAt = (x, y) => {
+    const el = document.elementFromPoint(x, y);
+    const hit = el && el.closest ? el.closest('[data-act]') : null;
+    return hit ? hit.dataset.act : null;
   };
 
-  const hit = (p) => {
-    for (const z of Input.zones) {
-      if (p.x >= z.x && p.x <= z.x + z.w && p.y >= z.y && p.y <= z.y + z.h) return z;
+  /* which action each live finger is currently over */
+  const fingers = new Map();
+
+  const refresh = (touches) => {
+    for (const t of touches) {
+      const want = actAt(t.clientX, t.clientY) || (t.onCanvas ? 'talk' : null);
+      const have = fingers.get(t.identifier);
+      if (want === have) continue;
+      if (have) Input.release(have);
+      if (want) Input.press(want);
+      if (want) fingers.set(t.identifier, want); else fingers.delete(t.identifier);
     }
-    return null;
   };
 
-  const activeTouches = new Map();
-
-  const onDown = (e) => {
+  const onStart = (e) => {
+    Input.touch = true;
     Input.anyKey = true;
-    for (const t of (e.changedTouches || [e])) {
-      const p = pt(t);
-      const z = hit(p);
-      if (z) {
-        activeTouches.set(t.identifier === undefined ? 'm' : t.identifier, z.a);
-        if (!Input.held[z.a]) Input.pressed[z.a] = true;
-        Input.held[z.a] = true;
-      } else {
-        Input.pointer.down = true;
-        Input.pointer.x = p.x; Input.pointer.y = p.y;
-        if (!Input.held.talk) Input.pressed.talk = true;
-        Input.held.talk = true;
-        activeTouches.set(t.identifier === undefined ? 'm' : t.identifier, 'talk');
-      }
-    }
-    if (e.cancelable) e.preventDefault();
-  };
-  const onUp = (e) => {
-    for (const t of (e.changedTouches || [e])) {
-      const k = t.identifier === undefined ? 'm' : t.identifier;
-      const a = activeTouches.get(k);
-      if (a) { Input.held[a] = false; Input.released[a] = true; activeTouches.delete(k); }
-    }
-    Input.pointer.down = false;
-    if (e.cancelable) e.preventDefault();
-  };
-  const onMove = (e) => {
-    for (const t of (e.changedTouches || [e])) {
-      const k = t.identifier === undefined ? 'm' : t.identifier;
-      if (!activeTouches.has(k)) continue;
-      const p = pt(t);
-      const z = hit(p);
-      const cur = activeTouches.get(k);
-      const want = z ? z.a : null;
-      if (want !== cur) {
-        if (cur) { Input.held[cur] = false; Input.released[cur] = true; }
-        if (want) { if (!Input.held[want]) Input.pressed[want] = true; Input.held[want] = true; }
-        activeTouches.set(k, want);
-      }
+    document.body.classList.add('touch');
+    for (const t of e.changedTouches) {
+      const a = actAt(t.clientX, t.clientY);
+      /* a tap anywhere that isn't a button means "go on, then" */
+      const act = a || 'talk';
+      Input.press(act);
+      fingers.set(t.identifier, act);
     }
     if (e.cancelable) e.preventDefault();
   };
 
-  canvas.addEventListener('touchstart', (e) => { Input.touch = true; onDown(e); }, { passive: false });
-  canvas.addEventListener('touchend', onUp, { passive: false });
-  canvas.addEventListener('touchcancel', onUp, { passive: false });
-  canvas.addEventListener('touchmove', onMove, { passive: false });
-  canvas.addEventListener('mousedown', onDown);
-  addEventListener('mouseup', onUp);
-  canvas.addEventListener('mousemove', (e) => {
-    const p = pt(e);
-    Input.pointer.x = p.x; Input.pointer.y = p.y;
+  const onMove = (e) => {
+    /* only re-target fingers that started on the pad; a finger that began on
+       the picture keeps meaning "advance", however far it wanders */
+    for (const t of e.changedTouches) {
+      if (!fingers.has(t.identifier)) continue;
+      const cur = fingers.get(t.identifier);
+      if (cur === 'talk') continue;
+      const want = actAt(t.clientX, t.clientY);
+      if (want === cur) continue;
+      Input.release(cur);
+      if (want) { Input.press(want); fingers.set(t.identifier, want); }
+      else fingers.delete(t.identifier);
+    }
+    if (e.cancelable) e.preventDefault();
+  };
+
+  const onEnd = (e) => {
+    for (const t of e.changedTouches) {
+      const a = fingers.get(t.identifier);
+      if (a) { Input.release(a); fingers.delete(t.identifier); }
+    }
+    if (e.cancelable) e.preventDefault();
+  };
+
+  document.addEventListener('touchstart', onStart, { passive: false });
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend', onEnd, { passive: false });
+  document.addEventListener('touchcancel', onEnd, { passive: false });
+
+  /* mouse, so the pad is testable on a desktop and the canvas is clickable */
+  let mouseAct = null;
+  document.addEventListener('mousedown', (e) => {
+    if (Input.touch) return;
+    Input.anyKey = true;
+    mouseAct = actAt(e.clientX, e.clientY) || 'talk';
+    Input.press(mouseAct);
+    e.preventDefault();
   });
+  addEventListener('mouseup', () => {
+    if (mouseAct) { Input.release(mouseAct); mouseAct = null; }
+  });
+
+  /* context menu on long-press is never what you wanted mid-jump */
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
+};
+
+/* Show the pad up front on anything without a keyboard, rather than waiting
+   for the first touch and popping the layout about. */
+Input.detectTouch = function () {
+  const coarse = matchMedia('(pointer: coarse)').matches;
+  const noHover = matchMedia('(hover: none)').matches;
+  if (coarse || noHover || navigator.maxTouchPoints > 0) {
+    Input.touch = true;
+    document.body.classList.add('touch');
+  }
 };
 
 Input.gamepad = function () {
   if (!navigator.getGamepads) return;
-  const gps = navigator.getGamepads();
-  for (const g of gps) {
-    if (!g) continue;
-    const set = (a, v) => {
-      if (v && !Input.held[a]) Input.pressed[a] = true;
-      if (!v && Input.held[a]) Input.released[a] = true;
-      if (v) Input.held[a] = true;
-      else if (Input.held[a] && !Input._kb) Input.held[a] = false;
-    };
-    const ax = g.axes[0] || 0, ay = g.axes[1] || 0;
-    const b = g.buttons;
-    set('left', ax < -0.4 || (b[14] && b[14].pressed));
-    set('right', ax > 0.4 || (b[15] && b[15].pressed));
-    set('up', ay < -0.5 || (b[12] && b[12].pressed));
-    set('down', ay > 0.5 || (b[13] && b[13].pressed));
-    set('jump', b[0] && b[0].pressed);
-    set('lob', b[2] && b[2].pressed);
-    set('slurp', b[1] && b[1].pressed);
-    set('talk', (b[3] && b[3].pressed) || (b[0] && b[0].pressed));
-    set('pause', b[9] && b[9].pressed);
-    break;
-  }
+  let gp = null;
+  for (const g of navigator.getGamepads()) if (g) { gp = g; break; }
+  if (!gp) return;
+  const b = gp.buttons, ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
+  const set = (a, on) => { if (on) Input.press(a); else if (Input._gp && Input._gp[a]) Input.release(a); };
+  const st = Input._gp || (Input._gp = {});
+  const map = {
+    left: ax < -0.4 || (b[14] && b[14].pressed),
+    right: ax > 0.4 || (b[15] && b[15].pressed),
+    up: ay < -0.5 || (b[12] && b[12].pressed),
+    down: ay > 0.5 || (b[13] && b[13].pressed),
+    jump: b[0] && b[0].pressed,
+    lob: b[2] && b[2].pressed,
+    slurp: b[1] && b[1].pressed,
+    talk: (b[3] && b[3].pressed) || (b[0] && b[0].pressed),
+    pause: b[9] && b[9].pressed,
+  };
+  for (const a in map) { set(a, !!map[a]); st[a] = !!map[a]; }
 };
 
 Input.endFrame = function () {
-  Input.pressed = {}; Input.released = {}; Input.anyKey = false;
+  Input.pressed = {}; Input.released = {};
+  Input.anyKey = false;
 };
 
 Input.axis = function () {
@@ -3909,6 +4215,16 @@ class Level {
       }
     }
     /* pools of liquid: each horizontal run of ~ or * */
+    /* Terrain is static, and it is by far the most expensive thing on screen
+       -- hundreds of pressed thumbprints, grit and strata per hillside. Bake
+       it into vertical strips the first time each one is needed, then the
+       whole landscape costs a few drawImage calls a frame. Strips rather than
+       one big canvas because iOS caps how large a canvas may be. */
+    this.chunkW = 1024;
+    this.bakeScale = 1.5;
+    this.chunks = new Map();
+    this.chunkOrder = [];
+
     this.pools = [];
     for (let y = 0; y < this.h; y++) {
       let x = 0;
@@ -3922,6 +4238,58 @@ class Level {
           x = x2 + 1;
         } else x++;
       }
+    }
+  }
+
+  /* ---- baked terrain strips ---- */
+
+  chunkAt(i) {
+    const hit = this.chunks.get(i);
+    if (hit) return hit;
+
+    const CW = this.chunkW, S = this.bakeScale;
+    const cv = document.createElement('canvas');
+    cv.width = Math.ceil(CW * S);
+    cv.height = Math.ceil(this.pxh * S);
+    const g = cv.getContext('2d');
+    g.setTransform(S, 0, 0, S, -i * CW * S, 0);
+
+    const x0 = i * CW, x1 = x0 + CW;
+    const th = this.theme;
+    for (let k = 0; k < this.shapes.length; k++) {
+      const bb = this.shapes[k].bb;
+      if (bb.x > x1 + 40 || bb.x + bb.w < x0 - 40) continue;
+      Clay.terrain(g, this.shapes[k], {
+        color: this.data.ground || th.ground,
+        top: this.data.groundTop || th.groundTop,
+        seed: k * 5 + 3,
+        vertH: 150,
+      });
+    }
+    for (const pl of this.planks) {
+      if (pl.x > x1 + 20 || pl.x + pl.w < x0 - 20) continue;
+      drawPlank(g, pl, this);
+    }
+
+    const rec = { cv, i };
+    this.chunks.set(i, rec);
+    this.chunkOrder.push(i);
+    /* keep a small window of strips alive; the rest can be re-baked */
+    while (this.chunkOrder.length > 7) {
+      const drop = this.chunkOrder.shift();
+      if (drop !== i) this.chunks.delete(drop);
+    }
+    return rec;
+  }
+
+  drawTerrain(ctx, camX, viewW) {
+    const CW = this.chunkW;
+    const i0 = Math.max(0, Math.floor(camX / CW));
+    const i1 = Math.floor((camX + viewW) / CW);
+    for (let i = i0; i <= i1; i++) {
+      if (i * CW > this.pxw) break;
+      const c = this.chunkAt(i);
+      ctx.drawImage(c.cv, 0, 0, c.cv.width, c.cv.height, i * CW, 0, CW, this.pxh);
     }
   }
 }
@@ -4458,49 +4826,42 @@ function drawLevel(ctx, lv, p, W, H, t) {
   ctx.save();
   ctx.translate(-cx, -cy);
 
+  /* only touch what is actually on screen */
+  const vx0 = cx - 180, vx1 = cx + W + 180;
+  const onScreen = (x, pad) => x > vx0 - (pad || 0) && x < vx1 + (pad || 0);
+
   /* far decorations */
-  for (const d of lv.deco) if (d.layer === 'back') drawDeco(ctx, d, t);
+  for (const d of lv.deco) if (d.layer === 'back' && onScreen(d.x, 340)) drawDeco(ctx, d, t);
 
-  /* terrain */
-  for (let i = 0; i < lv.shapes.length; i++) {
-    Clay.terrain(ctx, lv.shapes[i], {
-      color: lv.data.ground || th.ground,
-      top: lv.data.groundTop || th.groundTop,
-      topH: th.groundH,
-      seed: i * 5 + 3,
-      vertH: 150,
-    });
-  }
-
-  /* one-way planks: lolly sticks and rulers */
-  for (const pl of lv.planks) drawPlank(ctx, pl, lv);
+  /* terrain, pre-baked into strips */
+  lv.drawTerrain(ctx, cx, W);
 
   /* pools */
-  for (const pool of lv.pools) drawPool(ctx, pool, t);
+  for (const pool of lv.pools) if (pool.x + pool.w > vx0 && pool.x < vx1) drawPool(ctx, pool, t);
 
   /* mid decorations */
-  for (const d of lv.deco) if (!d.layer || d.layer === 'mid') drawDeco(ctx, d, t);
+  for (const d of lv.deco) if ((!d.layer || d.layer === 'mid') && onScreen(d.x, 220)) drawDeco(ctx, d, t);
 
   /* props behind characters */
-  for (const pr of lv.props) if (PROP_BACK[pr.kind]) PROP_BACK[pr.kind](ctx, pr, t, lv);
+  for (const pr of lv.props) if (PROP_BACK[pr.kind] && onScreen(pr.x, 200)) PROP_BACK[pr.kind](ctx, pr, t, lv);
 
   /* npcs */
-  for (const n of lv.npcs) drawNpc(ctx, n);
+  for (const n of lv.npcs) if (onScreen(n.x, 260)) drawNpc(ctx, n);
 
   /* blobs */
-  for (const b of lv.blobs) drawClayBlobEntity(ctx, b);
+  for (const b of lv.blobs) if (onScreen(b.x, 60)) drawClayBlobEntity(ctx, b);
 
   /* player */
   if (p && !p.hidden) drawNorbert(ctx, p.rig, p.x, p.y);
 
   /* props in front */
-  for (const pr of lv.props) if (PROP_FRONT[pr.kind]) PROP_FRONT[pr.kind](ctx, pr, t, lv);
+  for (const pr of lv.props) if (PROP_FRONT[pr.kind] && onScreen(pr.x, 200)) PROP_FRONT[pr.kind](ctx, pr, t, lv);
 
   FX.draw(ctx);
   FX.drawText(ctx);
 
   /* near decorations */
-  for (const d of lv.deco) if (d.layer === 'fore') drawDeco(ctx, d, t);
+  for (const d of lv.deco) if (d.layer === 'fore' && onScreen(d.x, 400)) drawDeco(ctx, d, t);
 
   ctx.restore();
 
@@ -5891,17 +6252,18 @@ function drawHUD(ctx, G, W, H) {
     ctx.restore();
   }
 
-  /* googly eyes found */
+  /* googly eyes found -- kept beside the meter so the top-centre stays clear
+     for the pause button on a phone */
   if (G.eyes > 0) {
-    const ex = W - 34;
-    Clay.googlyEye(ctx, ex, 24, 9, Math.sin(G.t * 2) * 0.6, Math.cos(G.t * 1.6) * 0.5);
-    softText(ctx, '×' + G.eyes, ex - 16, 29, 13, '#ffeccb', 'right', '700');
+    const ex = x0 + p.capMass * 24 + 6;
+    Clay.googlyEye(ctx, ex, y0, 9, Math.sin(G.t * 2) * 0.6, Math.cos(G.t * 1.6) * 0.5);
+    softText(ctx, '×' + G.eyes, ex + 13, y0 + 5, 13, '#ffeccb', 'left', '700');
   }
 
   /* the clock, ticking towards nine */
   const lv = G.level;
   if (lv && lv.data.clock) {
-    softText(ctx, lv.data.clock, W / 2, 26, 12, 'rgba(255,236,206,0.55)', 'center', '700');
+    softText(ctx, lv.data.clock, W - 18, 29, 12, 'rgba(255,236,206,0.55)', 'right', '700');
   }
 
   /* dissolve warning */
@@ -6016,7 +6378,7 @@ function drawTitle(ctx, G, W, H) {
   softText(ctx, '\u2191 \u2193 choose    SPACE / ENTER select', mx, H * 0.552 + G.menu.length * 27 + 2, 10, 'rgba(255,232,200,0.42)', 'center', '600');
   softText(ctx, 'v1.0  \u00b7  no sprites, no textures, no audio files', W - 12, H - 10, 9, 'rgba(255,232,200,0.3)', 'right', '600');
 
-  Clay.grain(ctx, W, H, 0.14);
+  Clay.grain(ctx, W, H, 0.14, RENDER_SCALE);
   Clay.vignette(ctx, W, H, 0.44, '#1b1430');
 }
 
@@ -6091,7 +6453,7 @@ function drawEnding(ctx, G, W, H) {
     ctx.restore();
   }
 
-  Clay.grain(ctx, W, H, 0.16);
+  Clay.grain(ctx, W, H, 0.16, RENDER_SCALE);
   Clay.vignette(ctx, W, H, 0.55, '#0a0610');
 }
 
@@ -6115,7 +6477,7 @@ function drawCredits(ctx, G, W, H) {
   if (scroll > lines.length * 26 + H - 60) {
     softText(ctx, 'press SPACE', W / 2, H - 30, 12, 'rgba(255,232,200,0.5)', 'center', '700');
   }
-  Clay.grain(ctx, W, H, 0.13);
+  Clay.grain(ctx, W, H, 0.13, RENDER_SCALE);
   Clay.vignette(ctx, W, H, 0.4, '#1a1020');
 }
 
@@ -6157,43 +6519,6 @@ const CREDITS = [
   '',
 ];
 
-/* ---- on-screen controls ----------------------------------------------- */
-
-function layoutTouchControls() {
-  Input.zones = [
-    { a: 'left', x: 0.02, y: 0.62, w: 0.11, h: 0.34 },
-    { a: 'right', x: 0.14, y: 0.62, w: 0.11, h: 0.34 },
-    { a: 'up', x: 0.075, y: 0.42, w: 0.11, h: 0.19 },
-    { a: 'down', x: 0.26, y: 0.62, w: 0.11, h: 0.34 },
-    { a: 'jump', x: 0.86, y: 0.66, w: 0.12, h: 0.30 },
-    { a: 'lob', x: 0.72, y: 0.66, w: 0.12, h: 0.30 },
-    { a: 'slurp', x: 0.72, y: 0.34, w: 0.12, h: 0.28 },
-    { a: 'pause', x: 0.44, y: 0.01, w: 0.12, h: 0.10 },
-  ];
-}
-
-const TOUCH_LABELS = { left: '◀', right: '▶', up: '▲', down: '▼', jump: 'JUMP', lob: 'TEAR', slurp: 'SLURP', pause: '' };
-
-function drawTouchControls(ctx, W, H) {
-  if (!Input.touch) return;
-  ctx.save();
-  for (const z of Input.zones) {
-    if (z.a === 'pause') continue;
-    const x = z.x * W, y = z.y * H, w = z.w * W, h = z.h * H;
-    const cx = x + w / 2, cy = y + h / 2;
-    const r = Math.min(w, h) / 2;
-    const on = Input.held[z.a];
-    ctx.globalAlpha = on ? 0.62 : 0.3;
-    Clay.blob(ctx, {
-      x: cx, y: cy, rx: r, ry: r * 0.92, seed: z.a.length * 13,
-      color: on ? '#e0a25c' : '#cbb9a0', wob: 0.09, prints: 1,
-    });
-    ctx.globalAlpha = on ? 0.95 : 0.6;
-    softText(ctx, TOUCH_LABELS[z.a], cx, cy + 5, r > 26 ? 13 : 16, '#3a2a24', 'center', '800');
-  }
-  ctx.restore();
-}
-
 
 /* ===== src/game.js ===== */
 /* =========================================================================
@@ -6201,7 +6526,13 @@ function drawTouchControls(ctx, W, H) {
    Scene manager, story beats, and the loop that ties it all together.
    ========================================================================= */
 
-const VIEW_W = 576, VIEW_H = 324, RENDER_SCALE = 1920 / 576;
+/* The picture is always 324 units tall; its width follows the screen so a
+   wide phone in landscape sees more of the table instead of black bars. */
+const VIEW_H = 324;
+let VIEW_W = 576;
+let RENDER_SCALE = 1920 / 576;
+const VIEW_W_MIN = 448, VIEW_W_MAX = 800;
+let PIXEL_BUDGET = 1.7e6;      // backing-store pixels; trimmed if we drop frames
 
 const G = {
   state: 'title',
@@ -6210,7 +6541,7 @@ const G = {
   eyes: 0, canLob: false,
   menu: ['BEGIN', 'CONTROLS', 'MUTE: OFF'],
   menuIdx: 0,
-  pauseMenu: ['RESUME', 'RESTART CHAPTER', 'MUTE', 'QUIT TO TITLE'],
+  pauseMenu: ['RESUME', 'RESTART CHAPTER', 'DETAIL: AUTO', 'MUTE', 'QUIT TO TITLE'],
   pauseIdx: 0,
   titleRig: null,
   endRig: null,
@@ -6542,6 +6873,16 @@ G.updatePlay = function (dt) {
   Dialogue.update(dt);
   Cam.update(dt);
 
+  /* while somebody is talking the d-pad is dead weight over the words --
+     fade it out; a tap anywhere still advances the line */
+  if (Input.touch) {
+    const reading = Dialogue.active;
+    if (reading !== G._reading) {
+      G._reading = reading;
+      document.body.classList.toggle('reading', reading);
+    }
+  }
+
   if (G.cine) {
     if (G.cine.name === 'thumb') G.updateThumb(dt);
     else if (G.cine.name === 'finale') G.updateFinale(dt);
@@ -6584,7 +6925,11 @@ G.updatePause = function (dt) {
     Sound.play('uiBig');
     if (G.pauseIdx === 0) G.state = 'play';
     else if (G.pauseIdx === 1) { G.state = 'play'; Wipe.go(() => G.loadLevel(G.level.data.id, true), '#2a1626'); }
-    else if (G.pauseIdx === 2) Sound.setMuted(!Sound.muted);
+    else if (G.pauseIdx === 2) {
+      const order = ['auto', 'smooth', 'rich'];
+      G.setDetail(order[(order.indexOf(_detail) + 1) % order.length]);
+    }
+    else if (G.pauseIdx === 3) Sound.setMuted(!Sound.muted);
     else { G.state = 'title'; Sound.music('title'); }
   }
 };
@@ -6607,21 +6952,13 @@ G.draw = function (ctx) {
     const lv = G.level;
     if (lv) {
       drawLevel(ctx, lv, G.player, W, H, G.t);
-      /* colour grade + film */
+      /* the lens: grade + vignette, baked into one blit */
       const th = lv.theme;
-      if (th.grade) {
-        ctx.save();
-        ctx.globalCompositeOperation = 'overlay';
-        ctx.globalAlpha = th.grade[1];
-        ctx.fillStyle = th.grade[0];
-        ctx.fillRect(0, 0, W, H);
-        ctx.restore();
-      }
-      Clay.grain(ctx, W, H, 0.13);
-      Clay.vignette(ctx, W, H, th.vignette, th.vignetteTint);
+      Clay.grain(ctx, W, H, 0.13, RENDER_SCALE);
+      Clay.lens(ctx, W, H, lv.data.id, th.vignette, th.vignetteTint,
+        th.grade && th.grade[0], th.grade && th.grade[1]);
       drawHUD(ctx, G, W, H);
       Dialogue.draw(ctx, W, H);
-      drawTouchControls(ctx, W, H);
     }
     if (G.state === 'pause') drawPause(ctx, G, W, H);
   }
@@ -6661,23 +6998,47 @@ function drawControlsPanel(ctx, W, H) {
 
 let _canvas, _ctx, _last = 0;
 
+/* Rendering detail adapts to whatever machine this turns out to be running
+   on. It starts conservative on a touch device so the first impression is
+   smooth, then climbs back up if there is headroom. */
+let _res = 1;                       // backing-resolution multiplier
+let _detail = 'auto';               // auto | smooth | rich
+let _fAcc = 0, _fN = 0, _fastRuns = 0;
+
 function boot() {
   _canvas = document.getElementById('game');
-  _canvas.width = VIEW_W * RENDER_SCALE;
-  _canvas.height = VIEW_H * RENDER_SCALE;
   _ctx = _canvas.getContext('2d', { alpha: false });
   _ctx.imageSmoothingEnabled = true;
 
+  Input.detectTouch();
   Input.attach(_canvas);
-  layoutTouchControls();
+  if (Input.touch) _res = 0.8;
 
-  const start = () => { Sound.resume(); if (!Sound._musicKey) Sound.music('title'); };
+  /* iOS will not make a sound until an AudioContext is started inside a real
+     gesture, so the very first touch or key anywhere does the unlocking. */
+  const start = () => {
+    Sound.unlock();
+    if (!Sound._musicKey) Sound.music('title');
+  };
   addEventListener('keydown', start, { once: true });
-  _canvas.addEventListener('pointerdown', start, { once: true });
-  _canvas.addEventListener('touchstart', start, { once: true });
+  document.addEventListener('pointerdown', start, { once: true });
+  document.addEventListener('touchstart', start, { once: true });
+
+  /* Safari suspends audio when you switch tabs and does not always bring it
+     back on its own. */
+  document.addEventListener('visibilitychange', () => {
+    if (!Sound.ctx) return;
+    if (document.hidden) { try { Sound.ctx.suspend(); } catch (e) {} }
+    else { try { Sound.ctx.resume(); } catch (e) {} _last = performance.now(); }
+  });
 
   resize();
   addEventListener('resize', resize);
+  addEventListener('orientationchange', () => setTimeout(resize, 120));
+  if (window.visualViewport) visualViewport.addEventListener('resize', resize);
+
+  const veil = document.getElementById('boot');
+  if (veil) setTimeout(() => { veil.classList.add('gone'); setTimeout(() => veil.remove(), 600); }, 350);
 
   if (typeof setupShot === 'function' && setupShot(G)) {
     /* screenshot harness took over; it drives its own frames */
@@ -6688,16 +7049,85 @@ function boot() {
   requestAnimationFrame(frame);
 }
 
+/* Fix the canvas to whatever box the layout gave it, at a backing resolution
+   the device can actually push. */
 function resize() {
-  const cw = innerWidth, ch = innerHeight;
-  const scale = Math.min(cw / VIEW_W, ch / VIEW_H);
-  _canvas.style.width = Math.floor(VIEW_W * scale) + 'px';
-  _canvas.style.height = Math.floor(VIEW_H * scale) + 'px';
+  if (!_canvas) return;
+  const box = _canvas.parentElement;
+  const availW = Math.max(160, box.clientWidth);
+  const availH = Math.max(120, box.clientHeight);
+
+  VIEW_W = Math.round(clamp(VIEW_H * (availW / availH), VIEW_W_MIN, VIEW_W_MAX) / 2) * 2;
+
+  const fit = Math.min(availW / VIEW_W, availH / VIEW_H);
+  const cssW = Math.max(1, Math.floor(VIEW_W * fit));
+  const cssH = Math.max(1, Math.floor(VIEW_H * fit));
+
+  let scale = (cssW / VIEW_W) * Math.min(devicePixelRatio || 1, 2) * _res;
+  const budget = Math.sqrt(PIXEL_BUDGET / (VIEW_W * VIEW_H));
+  scale = clamp(Math.min(scale, budget), 1, 4);
+
+  RENDER_SCALE = scale;
+  _canvas.width = Math.round(VIEW_W * scale);
+  _canvas.height = Math.round(VIEW_H * scale);
+  _canvas.style.width = cssW + 'px';
+  _canvas.style.height = cssH + 'px';
+  _ctx = _canvas.getContext('2d', { alpha: false });
+  _ctx.imageSmoothingEnabled = true;
+
+  if (G.level) Cam.clamp(VIEW_W, VIEW_H);
 }
+
+/* Used by the screenshot harness: pin the exact store resolution. */
+G.forceViewport = function (w, scale) {
+  VIEW_W = w;
+  RENDER_SCALE = scale;
+  _canvas.width = Math.round(w * scale);
+  _canvas.height = Math.round(VIEW_H * scale);
+  _canvas.style.width = _canvas.width + 'px';
+  _canvas.style.height = _canvas.height + 'px';
+  _ctx = _canvas.getContext('2d', { alpha: false });
+  _ctx.imageSmoothingEnabled = true;
+};
+
+/* Give back resolution first and surface detail second. Never the other way
+   round: a slightly soft picture still reads as clay, a stuttering one
+   doesn't read as anything. */
+function watchPerf(dt) {
+  if (_detail !== 'auto') return;
+  _fAcc += dt; _fN++;
+  if (_fN < 45) return;
+  const avg = _fAcc / _fN;
+  _fAcc = 0; _fN = 0;
+
+  if (avg > 1 / 48) {
+    _fastRuns = 0;
+    if (_res > 0.5) { _res = Math.max(0.5, _res - 0.15); resize(); }
+    else if (Clay.quality) Clay.quality = 0;
+  } else if (avg < 1 / 57) {
+    /* only climb after several calm windows, so it never oscillates */
+    if (++_fastRuns >= 4) {
+      _fastRuns = 0;
+      if (!Clay.quality) Clay.quality = 1;
+      else if (_res < 1) { _res = Math.min(1, _res + 0.1); resize(); }
+    }
+  } else _fastRuns = 0;
+}
+
+G.setDetail = function (mode) {
+  _detail = mode;
+  if (mode === 'smooth') { _res = 0.55; Clay.quality = 0; }
+  else if (mode === 'rich') { _res = 1; Clay.quality = 1; }
+  else { _res = Input.touch ? 0.8 : 1; Clay.quality = 1; }
+  _fAcc = 0; _fN = 0; _fastRuns = 0;
+  G.pauseMenu[2] = 'DETAIL: ' + mode.toUpperCase();
+  resize();
+};
 
 function frame(now) {
   const dt = Math.min(0.05, (now - _last) / 1000);
   _last = now;
+  watchPerf(dt);
   G.update(dt);
   _ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
   G.draw(_ctx);

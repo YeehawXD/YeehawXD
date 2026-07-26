@@ -506,9 +506,18 @@ Clay.grainPattern = function (ctx) {
   const g = c.getContext('2d');
   const img = g.createImageData(S, S);
   const d = img.data;
+  /* Mean-zero RGBA: half the grains lighten, half darken, most pixels are
+     clear. That lets the grain go down with plain source-over instead of an
+     'overlay' blend, which on a phone is the difference between a full-screen
+     destination read every frame and a cheap composite. */
   for (let i = 0; i < S * S; i++) {
-    const v = 118 + (Math.random() * 74 - 37) + (Math.random() * Math.random() * 30 - 8);
-    d[i * 4] = v; d[i * 4 + 1] = v; d[i * 4 + 2] = v; d[i * 4 + 3] = 255;
+    const v = Math.random();
+    const up = v > 0.5;
+    const a = Math.pow(Math.random(), 2.2) * 190;
+    d[i * 4] = up ? 255 : 0;
+    d[i * 4 + 1] = up ? 250 : 4;
+    d[i * 4 + 2] = up ? 235 : 12;
+    d[i * 4 + 3] = a;
   }
   g.putImageData(img, 0, 0);
   Clay._grainPat = ctx.createPattern(c, 'repeat');
@@ -540,20 +549,42 @@ Clay.paperPattern = function (ctx) {
   return Clay._paperPat;
 };
 
-/* Film grain over the whole frame. Slides every stop-motion tick so it
-   crawls like real film rather than sitting there like a static overlay. */
-Clay.grain = function (ctx, w, h, alpha, scale) {
+/* Film grain over the whole frame.
+
+   Filling the screen with a repeating pattern every frame means sampling that
+   pattern per pixel, which on a phone costs more than the entire cast put
+   together. So the grain is baked once into a full-resolution sheet a little
+   larger than the screen, and each stop-motion tick blits it from a different
+   offset -- same crawl, one cheap composite. */
+Clay._grainSheet = null;
+Clay.grain = function (ctx, w, h, alpha, devScale) {
   if (!Clay.quality) return;
-  const pat = Clay.grainPattern(ctx);
+  const S = Math.max(1, devScale || 1);
+  const bw = Math.ceil(w * S), bh = Math.ceil(h * S);
+  const PAD = 96;
+  let sheet = Clay._grainSheet;
+  if (!sheet || sheet.w !== bw || sheet.h !== bh) {
+    const cv = document.createElement('canvas');
+    cv.width = bw + PAD; cv.height = bh + PAD;
+    const g = cv.getContext('2d');
+    const img = g.createImageData(cv.width, cv.height);
+    const d = img.data;
+    /* mean-zero speckle: half lightens, half darkens, most of it is clear */
+    for (let i = 0; i < cv.width * cv.height; i++) {
+      const up = Math.random() > 0.5;
+      d[i * 4] = up ? 255 : 0;
+      d[i * 4 + 1] = up ? 250 : 4;
+      d[i * 4 + 2] = up ? 235 : 12;
+      d[i * 4 + 3] = Math.pow(Math.random(), 2.2) * 200;
+    }
+    g.putImageData(img, 0, 0);
+    sheet = Clay._grainSheet = { cv, w: bw, h: bh };
+  }
+  const ox = (hash1(Clay.frame * 3.1) * PAD) | 0;
+  const oy = (hash1(Clay.frame * 7.7 + 3) * PAD) | 0;
   ctx.save();
-  ctx.globalCompositeOperation = 'overlay';
-  ctx.globalAlpha = alpha;
-  const ox = (hash1(Clay.frame * 3.1) * 128) | 0;
-  const oy = (hash1(Clay.frame * 7.7 + 3) * 128) | 0;
-  ctx.translate(-ox, -oy);
-  if (scale && scale !== 1) ctx.scale(scale, scale);
-  ctx.fillStyle = pat;
-  ctx.fillRect(0, 0, (w + 130) / (scale || 1), (h + 130) / (scale || 1));
+  ctx.globalAlpha = alpha * 2.6;
+  ctx.drawImage(sheet.cv, ox, oy, bw, bh, 0, 0, w, h);
   ctx.restore();
 };
 
@@ -576,6 +607,33 @@ Clay.vignette = function (ctx, w, h, amount, tint) {
   g.addColorStop(1, tint ? rgba(tint, amount) : 'rgba(8,4,14,' + amount + ')');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
+};
+
+/* The lens, baked.
+
+   The vignette and the colour grade never change within a room, so paying for
+   two more full-screen passes every frame is pure waste -- on a phone they
+   cost more than the entire cast. Bake them into one translucent layer per
+   room and blit it. */
+Clay._lens = null;
+Clay.lens = function (ctx, w, h, key, amount, tint, gradeCol, gradeA) {
+  const id = key + '|' + Math.round(w) + 'x' + Math.round(h);
+  let L = Clay._lens;
+  if (!L || L.id !== id) {
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(w));
+    cv.height = Math.max(1, Math.round(h));
+    const g = cv.getContext('2d');
+    if (gradeCol && gradeA) {
+      /* the grade was an 'overlay' wash; at these strengths a straight tint
+         at a little under two thirds reads the same and costs nothing */
+      g.fillStyle = rgba(gradeCol, gradeA * 0.62);
+      g.fillRect(0, 0, cv.width, cv.height);
+    }
+    Clay.vignette(g, cv.width, cv.height, amount, tint);
+    L = Clay._lens = { id, cv };
+  }
+  ctx.drawImage(L.cv, 0, 0, L.cv.width, L.cv.height, 0, 0, w, h);
 };
 
 /* ---------------------------------------------------------------------- */

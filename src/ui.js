@@ -102,17 +102,18 @@ function drawHUD(ctx, G, W, H) {
     ctx.restore();
   }
 
-  /* googly eyes found */
+  /* googly eyes found -- kept beside the meter so the top-centre stays clear
+     for the pause button on a phone */
   if (G.eyes > 0) {
-    const ex = W - 34;
-    Clay.googlyEye(ctx, ex, 24, 9, Math.sin(G.t * 2) * 0.6, Math.cos(G.t * 1.6) * 0.5);
-    softText(ctx, '×' + G.eyes, ex - 16, 29, 13, '#ffeccb', 'right', '700');
+    const ex = x0 + p.capMass * 24 + 6;
+    Clay.googlyEye(ctx, ex, y0, 9, Math.sin(G.t * 2) * 0.6, Math.cos(G.t * 1.6) * 0.5);
+    softText(ctx, '×' + G.eyes, ex + 13, y0 + 5, 13, '#ffeccb', 'left', '700');
   }
 
   /* the clock, ticking towards nine */
   const lv = G.level;
   if (lv && lv.data.clock) {
-    softText(ctx, lv.data.clock, W / 2, 26, 12, 'rgba(255,236,206,0.55)', 'center', '700');
+    softText(ctx, lv.data.clock, W - 18, 29, 12, 'rgba(255,236,206,0.55)', 'right', '700');
   }
 
   /* dissolve warning */
@@ -227,7 +228,7 @@ function drawTitle(ctx, G, W, H) {
   softText(ctx, '\u2191 \u2193 choose    SPACE / ENTER select', mx, H * 0.552 + G.menu.length * 27 + 2, 10, 'rgba(255,232,200,0.42)', 'center', '600');
   softText(ctx, 'v1.0  \u00b7  no sprites, no textures, no audio files', W - 12, H - 10, 9, 'rgba(255,232,200,0.3)', 'right', '600');
 
-  Clay.grain(ctx, W, H, 0.14);
+  Clay.grain(ctx, W, H, 0.14, RENDER_SCALE);
   Clay.vignette(ctx, W, H, 0.44, '#1b1430');
 }
 
@@ -302,7 +303,7 @@ function drawEnding(ctx, G, W, H) {
     ctx.restore();
   }
 
-  Clay.grain(ctx, W, H, 0.16);
+  Clay.grain(ctx, W, H, 0.16, RENDER_SCALE);
   Clay.vignette(ctx, W, H, 0.55, '#0a0610');
 }
 
@@ -326,7 +327,7 @@ function drawCredits(ctx, G, W, H) {
   if (scroll > lines.length * 26 + H - 60) {
     softText(ctx, 'press SPACE', W / 2, H - 30, 12, 'rgba(255,232,200,0.5)', 'center', '700');
   }
-  Clay.grain(ctx, W, H, 0.13);
+  Clay.grain(ctx, W, H, 0.13, RENDER_SCALE);
   Clay.vignette(ctx, W, H, 0.4, '#1a1020');
 }
 
@@ -367,40 +368,3 @@ const CREDITS = [
   'thank you for playing',
   '',
 ];
-
-/* ---- on-screen controls ----------------------------------------------- */
-
-function layoutTouchControls() {
-  Input.zones = [
-    { a: 'left', x: 0.02, y: 0.62, w: 0.11, h: 0.34 },
-    { a: 'right', x: 0.14, y: 0.62, w: 0.11, h: 0.34 },
-    { a: 'up', x: 0.075, y: 0.42, w: 0.11, h: 0.19 },
-    { a: 'down', x: 0.26, y: 0.62, w: 0.11, h: 0.34 },
-    { a: 'jump', x: 0.86, y: 0.66, w: 0.12, h: 0.30 },
-    { a: 'lob', x: 0.72, y: 0.66, w: 0.12, h: 0.30 },
-    { a: 'slurp', x: 0.72, y: 0.34, w: 0.12, h: 0.28 },
-    { a: 'pause', x: 0.44, y: 0.01, w: 0.12, h: 0.10 },
-  ];
-}
-
-const TOUCH_LABELS = { left: '◀', right: '▶', up: '▲', down: '▼', jump: 'JUMP', lob: 'TEAR', slurp: 'SLURP', pause: '' };
-
-function drawTouchControls(ctx, W, H) {
-  if (!Input.touch) return;
-  ctx.save();
-  for (const z of Input.zones) {
-    if (z.a === 'pause') continue;
-    const x = z.x * W, y = z.y * H, w = z.w * W, h = z.h * H;
-    const cx = x + w / 2, cy = y + h / 2;
-    const r = Math.min(w, h) / 2;
-    const on = Input.held[z.a];
-    ctx.globalAlpha = on ? 0.62 : 0.3;
-    Clay.blob(ctx, {
-      x: cx, y: cy, rx: r, ry: r * 0.92, seed: z.a.length * 13,
-      color: on ? '#e0a25c' : '#cbb9a0', wob: 0.09, prints: 1,
-    });
-    ctx.globalAlpha = on ? 0.95 : 0.6;
-    softText(ctx, TOUCH_LABELS[z.a], cx, cy + 5, r > 26 ? 13 : 16, '#3a2a24', 'center', '800');
-  }
-  ctx.restore();
-}

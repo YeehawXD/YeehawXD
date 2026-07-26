@@ -70,6 +70,14 @@ const report = await page.evaluate(() => {
     });
   }
 
+  /* a screen wipe must always finish: if it stalls, the game is left under a
+     slab of clay and nothing is visible (this shipped broken once) */
+  G.reset(); G.state = 'play'; G.loadLevel('sill', true);
+  Wipe.go(() => {});
+  let wipeFrames = 0;
+  while (Wipe.active && wipeFrames < 600) { G.update(dt); wipeFrames++; }
+  out.push({ id: 'wipe', stuck: Wipe.active, frames: wipeFrames });
+
   /* also exercise title, pause, ending and credits draws */
   G.state = 'title'; G.update(dt); ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0); G.draw(ctx);
   G.showControls = true; G.draw(ctx); G.showControls = false;

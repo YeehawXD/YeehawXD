@@ -87,9 +87,41 @@ node tools/build.mjs
 open dist/norbert-unfinished.html
 ```
 
-One HTML file, ~255 KB, no network, no dependencies. Works offline, wraps
+One HTML file, ~270 KB, no network, no dependencies. Works offline, wraps
 straight into Electron or NW.js for a Steam build, and drops onto itch.io as-is.
-Keyboard, gamepad and on-screen touch controls are all supported.
+
+---
+
+## On a phone
+
+It is built to be played on a phone, not merely to survive on one.
+
+**Landscape** is the way to play it. The picture is always 324 units tall and
+its *width follows the screen*, so a 19.5:9 phone gets a wider view of the
+table rather than black bars down the sides. The controls float over the bottom
+corners at reduced opacity and fade out entirely while anyone is talking —
+you only need "tap to continue" then, and a tap anywhere does it.
+
+**Portrait** works too: picture up top, a full-size control deck along the
+bottom, and a quiet note suggesting you turn the phone.
+
+The details that make it feel native rather than ported:
+
+- **Real DOM buttons, not painted rectangles.** Hit testing goes through
+  `elementFromPoint` on every touch move rather than pointer capture, so you
+  can roll a thumb from LEFT to RIGHT without lifting it — which is how people
+  actually play platformers on a phone. Multi-touch works: hold RIGHT and hit
+  JUMP.
+- **Safe areas** are honoured, so nothing lives under the Dynamic Island or the
+  home indicator, and nothing scrolls, bounces or zooms.
+- **iOS audio** is unlocked with a silent sample inside the first real gesture,
+  and suspended/resumed around `visibilitychange`.
+- **Detail adapts both ways.** The renderer starts conservative on a touch
+  device, then climbs back to full resolution if the device has headroom, and
+  steps down — resolution first, surface detail second — if frames start
+  slipping. A soft picture still reads as clay; a stuttering one doesn't read
+  as anything. `PAUSE → DETAIL` overrides it with AUTO / SMOOTH / RICH.
+- Add it to your Home Screen and it runs fullscreen with no browser chrome.
 
 ---
 
@@ -114,7 +146,12 @@ and everything in the game goes through it.
   times, not with one enormous thumb.
 - **Terrain is sculpted, not tiled.** The tile grid is traced into closed
   outlines, resampled, corner-rounded and pushed around by noise, then baked
-  into `Path2D` once at load. Levels look like slabs of clay, not tilemaps.
+  into vertical strips at load. Levels look like slabs of clay, not tilemaps,
+  and the whole landscape costs a few `drawImage` calls a frame.
+- **The expensive things are baked.** Grain is one full-resolution sheet blitted
+  from a shifting offset instead of a per-pixel pattern fill; the vignette and
+  colour grade are one cached layer instead of two full-screen blends. On a
+  phone those three passes cost more than the entire cast put together.
 
 Audio is the same story: `src/audio.js` synthesises every squelch from filtered
 noise with a falling pitch envelope, and the score is a small generative music
@@ -142,7 +179,7 @@ src/levels.js         six chapters and the entire script
 src/ui.js             title, HUD, chapter cards, pause, credits, touch buttons
 src/game.js           scene manager, story beats, set pieces, main loop
 src/shots.js          deterministic capture harness (not shipped)
-tools/                build, screenshots, and the two test harnesses
+tools/                build, screenshots, and the three test harnesses
 ```
 
 ---
@@ -154,6 +191,7 @@ Two harnesses, both worth running after any level edit:
 ```bash
 node tools/reach.mjs     # static reachability
 node tools/smoke.mjs     # headless playthrough
+node tools/mobile.mjs    # emulated iPhone, both orientations
 ```
 
 `reach.mjs` builds the graph of standable surfaces in every chapter and floods
@@ -167,6 +205,11 @@ tile too deep", which it did.
 forty seconds, and fails on any JS error, NaN position, or fall through the
 world. It also renders the title, controls, pause, ending and credits screens so
 every draw path is exercised.
+
+`mobile.mjs` boots the shipped single-file build in an emulated iPhone 16 Pro
+at DPR 3 with touch, taps past the title, drives Norbert with the on-screen
+d-pad using real touch events, and reports frame rate, canvas backing size and
+any horizontal overflow in both orientations.
 
 ```bash
 node tools/screenshots.mjs   # regenerate screenshots/ from the live game

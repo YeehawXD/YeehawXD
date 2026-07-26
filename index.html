@@ -3,42 +3,230 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Norbert">
+<meta name="theme-color" content="#150f20">
 <title>Norbert, Unfinished</title>
 <meta name="description" content="A very short adventure about not being ready. Everything you can see is drawn out of maths at runtime.">
 <style>
+  :root {
+    --pad-key: 62px;          /* d-pad key size, re-set for landscape below */
+    --pad-big: 88px;          /* the jump button */
+    --clay-hi: #e9b489;
+    --clay-mid: #ce8459;
+    --clay-lo: #7e3a26;
+  }
+
   html, body {
-    margin: 0; padding: 0; height: 100%;
-    background: #0d0812;
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: #100b18;
     overflow: hidden;
+    position: fixed;
     -webkit-tap-highlight-color: transparent;
     -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
     touch-action: none;
     overscroll-behavior: none;
+    font: 600 15px "Trebuchet MS", "Segoe UI", Verdana, system-ui, sans-serif;
   }
-  body {
-    display: flex; align-items: center; justify-content: center;
-    background:
-      radial-gradient(ellipse at 50% 40%, #241a2c 0%, #0d0812 70%);
+
+  #shell {
+    position: fixed;
+    inset: 0;
+    padding:
+      env(safe-area-inset-top) env(safe-area-inset-right)
+      env(safe-area-inset-bottom) env(safe-area-inset-left);
+    display: flex;
+    flex-direction: column;
+    background: radial-gradient(ellipse at 50% 38%, #241a2c 0%, #100b18 72%);
   }
+
+  #stagewrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
   #game {
     display: block;
-    image-rendering: auto;
-    box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,220,180,0.05);
+    box-shadow: 0 18px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,220,180,.06);
     border-radius: 2px;
-    max-width: 100vw; max-height: 100vh;
   }
+
+  /* ---- boot veil ---- */
   #boot {
-    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-    color: #d9a678; font: 600 15px "Trebuchet MS", Verdana, sans-serif;
-    letter-spacing: 0.08em; pointer-events: none;
-    transition: opacity .6s ease; z-index: 5;
+    position: absolute; inset: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: center;
+    color: #d9a678; letter-spacing: .1em; font-size: 14px;
+    background: #100b18;
+    transition: opacity .5s ease;
   }
-  #boot.gone { opacity: 0; }
+  #boot.gone { opacity: 0; pointer-events: none; }
+
+  /* ================= on-screen controls ================= */
+  /* Hidden entirely on machines with a real keyboard; the game never shows
+     controls it does not need. */
+  #pad, #pausebtn { display: none; }
+  body.touch #pad { display: flex; }
+  body.touch #pausebtn { display: block; }
+
+  #pad {
+    flex: 0 0 auto;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px 14px;
+    box-sizing: border-box;
+  }
+
+  .cluster { display: grid; gap: 8px; }
+
+  .cluster.dpad {
+    grid-template-columns: repeat(3, var(--pad-key));
+    grid-template-rows: repeat(2, var(--pad-key));
+  }
+  .k-up    { grid-area: 1 / 2; }
+  .k-left  { grid-area: 2 / 1; }
+  .k-down  { grid-area: 2 / 2; }
+  .k-right { grid-area: 2 / 3; }
+
+  .cluster.acts {
+    grid-template-columns: var(--pad-key) var(--pad-big);
+    grid-template-rows: var(--pad-key) var(--pad-big);
+    align-items: end; justify-items: end;
+  }
+  .k-slurp { grid-area: 1 / 1 / 2 / 3; justify-self: end; width: calc(var(--pad-key) * 1.5); height: calc(var(--pad-key) * .78); }
+  .k-lob   { grid-area: 2 / 1; }
+  .k-jump  { grid-area: 2 / 2; width: var(--pad-big); height: var(--pad-big); font-size: 15px; }
+
+  .btn {
+    -webkit-appearance: none; appearance: none;
+    width: var(--pad-key); height: var(--pad-key);
+    border: 0; padding: 0; margin: 0;
+    display: grid; place-items: center;
+    font: 800 13px/1 "Trebuchet MS", "Segoe UI", Verdana, system-ui, sans-serif;
+    letter-spacing: .04em;
+    color: #40210f;
+    text-shadow: 0 1px 0 rgba(255,232,200,.45);
+    /* an irregular radius, because nothing here is a perfect circle */
+    border-radius: 47% 53% 51% 49% / 50% 48% 52% 50%;
+    background:
+      radial-gradient(115% 115% at 32% 26%, var(--clay-hi) 0%, var(--clay-mid) 42%, #b06038 74%, var(--clay-lo) 100%);
+    box-shadow:
+      inset 0 -4px 7px rgba(74,26,12,.42),
+      inset 0 3px 6px rgba(255,226,190,.42),
+      0 5px 12px rgba(8,3,14,.45);
+    transition: transform .06s ease, filter .06s ease;
+    touch-action: none;
+  }
+  .btn:nth-of-type(2n) { border-radius: 52% 48% 47% 53% / 49% 52% 48% 51%; }
+  .btn:nth-of-type(3n) { border-radius: 49% 51% 53% 47% / 52% 50% 50% 48%; }
+  .btn.on {
+    transform: translateY(3px) scale(.955);
+    filter: brightness(1.14) saturate(1.05);
+    box-shadow:
+      inset 0 -2px 5px rgba(74,26,12,.5),
+      inset 0 2px 8px rgba(120,44,20,.5),
+      0 2px 5px rgba(8,3,14,.5);
+  }
+  .btn .arrow { font-size: 20px; line-height: 1; }
+
+  #pausebtn {
+    position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    z-index: 12;
+    width: 44px; height: 30px;
+    border: 0; padding: 0;
+    border-radius: 8px 9px 8px 9px;
+    background: rgba(28,16,34,.55);
+    color: rgba(255,232,200,.75);
+    font: 800 13px/1 "Trebuchet MS", system-ui, sans-serif;
+    letter-spacing: .12em;
+    touch-action: none;
+  }
+  #pausebtn.on { background: rgba(58,32,60,.75); }
+
+  /* while a conversation is on screen the pad only gets in the way */
+  body.reading #pad { opacity: 0; pointer-events: none; }
+  #pad { transition: opacity .22s ease; }
+
+  /* ---- portrait: picture up top, control deck along the bottom ---- */
+  #hint { display: none; }
+  @media (orientation: portrait) {
+    /* sized off the viewport so both clusters always fit side by side */
+    :root { --pad-key: min(66px, 14.6vw); --pad-big: min(90px, 20vw); }
+    #stagewrap { align-items: flex-start; padding-top: 42px; }
+    #pad {
+      flex: 0 0 auto;
+      align-items: flex-end;
+      padding-bottom: max(18px, env(safe-area-inset-bottom));
+    }
+    body.reading #pad { opacity: .14; }
+    body.touch #hint {
+      display: block;
+      position: absolute; left: 0; right: 0; bottom: 18px;
+      text-align: center;
+      font: 600 12px/1.5 "Trebuchet MS", system-ui, sans-serif;
+      letter-spacing: .1em;
+      color: rgba(233,180,137,.42);
+      pointer-events: none;
+    }
+    body.reading #hint { opacity: 0; }
+  }
+
+  /* ---- landscape: controls float over the corners, out of the way ---- */
+  @media (orientation: landscape) {
+    :root { --pad-key: 54px; --pad-big: 74px; }
+    #pad {
+      position: absolute;
+      inset: auto 0 0 0;
+      height: auto;
+      pointer-events: none;
+      padding: 0 max(14px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-right));
+      z-index: 10;
+    }
+    .cluster { pointer-events: auto; }
+    .btn { opacity: .88; }
+  }
+
+  /* very short landscape (small phones): shrink so nothing overlaps the HUD */
+  @media (orientation: landscape) and (max-height: 380px) {
+    :root { --pad-key: 46px; --pad-big: 62px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .btn { transition: none; }
+  }
 </style>
 </head>
 <body>
-<canvas id="game" width="1920" height="1080"></canvas>
-<div id="boot">warming the clay…</div>
+<div id="shell">
+  <div id="stagewrap">
+    <canvas id="game" width="1920" height="1080"></canvas>
+    <button id="pausebtn" data-act="pause" aria-label="Pause">❚❚</button>
+    <div id="hint">turn your phone sideways for the full picture</div>
+    <div id="boot">warming the clay…</div>
+  </div>
+
+  <div id="pad" aria-hidden="true">
+    <div class="cluster dpad">
+      <button class="btn k-up"    data-act="up"    aria-label="Stretch tall"><span class="arrow">▲</span></button>
+      <button class="btn k-left"  data-act="left"  aria-label="Left"><span class="arrow">◀</span></button>
+      <button class="btn k-down"  data-act="down"  aria-label="Squash flat"><span class="arrow">▼</span></button>
+      <button class="btn k-right" data-act="right" aria-label="Right"><span class="arrow">▶</span></button>
+    </div>
+    <div class="cluster acts">
+      <button class="btn k-slurp" data-act="slurp" aria-label="Slurp your pieces back">SLURP</button>
+      <button class="btn k-lob"   data-act="lob"   aria-label="Tear a piece off">TEAR</button>
+      <button class="btn k-jump"  data-act="jump"  aria-label="Jump">JUMP</button>
+    </div>
+  </div>
+</div>
 
 <script src="src/util.js"></script>
 <script src="src/clay.js"></script>
@@ -54,12 +242,5 @@
 <script src="src/ui.js"></script>
 <script src="src/shots.js"></script>
 <script src="src/game.js"></script>
-<script>
-  addEventListener('load', () => {
-    const b = document.getElementById('boot');
-    if (!b) return;
-    setTimeout(() => { b.classList.add('gone'); setTimeout(() => b.remove(), 700); }, 400);
-  });
-</script>
 </body>
 </html>

@@ -258,14 +258,18 @@ Wipe.go = function (cb, color) {
 
 Wipe.update = function (dt) {
   if (!Wipe.active) return;
-  Wipe.t += dt / Wipe.dur;
-  if (Wipe.dir === 1 && Wipe.t >= 1) {
-    Wipe.t = 1; Wipe.dir = -1;
-    if (Wipe.cb) { Wipe.cb(); Wipe.cb = null; }
-  } else if (Wipe.dir === -1 && Wipe.t <= 0) {
-    Wipe.t = 0; Wipe.active = false; Wipe.dir = 0;
+  const step = dt / Wipe.dur;
+  if (Wipe.dir === 1) {
+    Wipe.t += step;
+    if (Wipe.t >= 1) {
+      Wipe.t = 1;
+      Wipe.dir = -1;
+      if (Wipe.cb) { Wipe.cb(); Wipe.cb = null; }
+    }
+  } else {
+    Wipe.t -= step * 1.4;              /* pull back a little faster than it came */
+    if (Wipe.t <= 0) { Wipe.t = 0; Wipe.active = false; Wipe.dir = 0; }
   }
-  if (Wipe.dir === -1) Wipe.t -= dt / Wipe.dur * 0.6;
 };
 
 Wipe.draw = function (ctx, W, H) {

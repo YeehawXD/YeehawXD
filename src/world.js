@@ -86,6 +86,16 @@ class Level {
       }
     }
     /* pools of liquid: each horizontal run of ~ or * */
+    /* Terrain is static, and it is by far the most expensive thing on screen
+       -- hundreds of pressed thumbprints, grit and strata per hillside. Bake
+       it into vertical strips the first time each one is needed, then the
+       whole landscape costs a few drawImage calls a frame. Strips rather than
+       one big canvas because iOS caps how large a canvas may be. */
+    this.chunkW = 1024;
+    this.bakeScale = 1.5;
+    this.chunks = new Map();
+    this.chunkOrder = [];
+
     this.pools = [];
     for (let y = 0; y < this.h; y++) {
       let x = 0;
@@ -99,6 +109,58 @@ class Level {
           x = x2 + 1;
         } else x++;
       }
+    }
+  }
+
+  /* ---- baked terrain strips ---- */
+
+  chunkAt(i) {
+    const hit = this.chunks.get(i);
+    if (hit) return hit;
+
+    const CW = this.chunkW, S = this.bakeScale;
+    const cv = document.createElement('canvas');
+    cv.width = Math.ceil(CW * S);
+    cv.height = Math.ceil(this.pxh * S);
+    const g = cv.getContext('2d');
+    g.setTransform(S, 0, 0, S, -i * CW * S, 0);
+
+    const x0 = i * CW, x1 = x0 + CW;
+    const th = this.theme;
+    for (let k = 0; k < this.shapes.length; k++) {
+      const bb = this.shapes[k].bb;
+      if (bb.x > x1 + 40 || bb.x + bb.w < x0 - 40) continue;
+      Clay.terrain(g, this.shapes[k], {
+        color: this.data.ground || th.ground,
+        top: this.data.groundTop || th.groundTop,
+        seed: k * 5 + 3,
+        vertH: 150,
+      });
+    }
+    for (const pl of this.planks) {
+      if (pl.x > x1 + 20 || pl.x + pl.w < x0 - 20) continue;
+      drawPlank(g, pl, this);
+    }
+
+    const rec = { cv, i };
+    this.chunks.set(i, rec);
+    this.chunkOrder.push(i);
+    /* keep a small window of strips alive; the rest can be re-baked */
+    while (this.chunkOrder.length > 7) {
+      const drop = this.chunkOrder.shift();
+      if (drop !== i) this.chunks.delete(drop);
+    }
+    return rec;
+  }
+
+  drawTerrain(ctx, camX, viewW) {
+    const CW = this.chunkW;
+    const i0 = Math.max(0, Math.floor(camX / CW));
+    const i1 = Math.floor((camX + viewW) / CW);
+    for (let i = i0; i <= i1; i++) {
+      if (i * CW > this.pxw) break;
+      const c = this.chunkAt(i);
+      ctx.drawImage(c.cv, 0, 0, c.cv.width, c.cv.height, i * CW, 0, CW, this.pxh);
     }
   }
 }
@@ -635,49 +697,42 @@ function drawLevel(ctx, lv, p, W, H, t) {
   ctx.save();
   ctx.translate(-cx, -cy);
 
+  /* only touch what is actually on screen */
+  const vx0 = cx - 180, vx1 = cx + W + 180;
+  const onScreen = (x, pad) => x > vx0 - (pad || 0) && x < vx1 + (pad || 0);
+
   /* far decorations */
-  for (const d of lv.deco) if (d.layer === 'back') drawDeco(ctx, d, t);
+  for (const d of lv.deco) if (d.layer === 'back' && onScreen(d.x, 340)) drawDeco(ctx, d, t);
 
-  /* terrain */
-  for (let i = 0; i < lv.shapes.length; i++) {
-    Clay.terrain(ctx, lv.shapes[i], {
-      color: lv.data.ground || th.ground,
-      top: lv.data.groundTop || th.groundTop,
-      topH: th.groundH,
-      seed: i * 5 + 3,
-      vertH: 150,
-    });
-  }
-
-  /* one-way planks: lolly sticks and rulers */
-  for (const pl of lv.planks) drawPlank(ctx, pl, lv);
+  /* terrain, pre-baked into strips */
+  lv.drawTerrain(ctx, cx, W);
 
   /* pools */
-  for (const pool of lv.pools) drawPool(ctx, pool, t);
+  for (const pool of lv.pools) if (pool.x + pool.w > vx0 && pool.x < vx1) drawPool(ctx, pool, t);
 
   /* mid decorations */
-  for (const d of lv.deco) if (!d.layer || d.layer === 'mid') drawDeco(ctx, d, t);
+  for (const d of lv.deco) if ((!d.layer || d.layer === 'mid') && onScreen(d.x, 220)) drawDeco(ctx, d, t);
 
   /* props behind characters */
-  for (const pr of lv.props) if (PROP_BACK[pr.kind]) PROP_BACK[pr.kind](ctx, pr, t, lv);
+  for (const pr of lv.props) if (PROP_BACK[pr.kind] && onScreen(pr.x, 200)) PROP_BACK[pr.kind](ctx, pr, t, lv);
 
   /* npcs */
-  for (const n of lv.npcs) drawNpc(ctx, n);
+  for (const n of lv.npcs) if (onScreen(n.x, 260)) drawNpc(ctx, n);
 
   /* blobs */
-  for (const b of lv.blobs) drawClayBlobEntity(ctx, b);
+  for (const b of lv.blobs) if (onScreen(b.x, 60)) drawClayBlobEntity(ctx, b);
 
   /* player */
   if (p && !p.hidden) drawNorbert(ctx, p.rig, p.x, p.y);
 
   /* props in front */
-  for (const pr of lv.props) if (PROP_FRONT[pr.kind]) PROP_FRONT[pr.kind](ctx, pr, t, lv);
+  for (const pr of lv.props) if (PROP_FRONT[pr.kind] && onScreen(pr.x, 200)) PROP_FRONT[pr.kind](ctx, pr, t, lv);
 
   FX.draw(ctx);
   FX.drawText(ctx);
 
   /* near decorations */
-  for (const d of lv.deco) if (d.layer === 'fore') drawDeco(ctx, d, t);
+  for (const d of lv.deco) if (d.layer === 'fore' && onScreen(d.x, 400)) drawDeco(ctx, d, t);
 
   ctx.restore();
 

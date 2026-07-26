@@ -244,6 +244,7 @@ function setupShot(G) {
 
   Clay.quality = 1;
   Sound.muted = true;
+  if (G.forceViewport) G.forceViewport(576, 1920 / 576);
   const boot = document.getElementById('boot');
   if (boot) boot.remove();
 

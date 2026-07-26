@@ -3,7 +3,13 @@
    Scene manager, story beats, and the loop that ties it all together.
    ========================================================================= */
 
-const VIEW_W = 576, VIEW_H = 324, RENDER_SCALE = 1920 / 576;
+/* The picture is always 324 units tall; its width follows the screen so a
+   wide phone in landscape sees more of the table instead of black bars. */
+const VIEW_H = 324;
+let VIEW_W = 576;
+let RENDER_SCALE = 1920 / 576;
+const VIEW_W_MIN = 448, VIEW_W_MAX = 800;
+let PIXEL_BUDGET = 1.7e6;      // backing-store pixels; trimmed if we drop frames
 
 const G = {
   state: 'title',
@@ -12,7 +18,7 @@ const G = {
   eyes: 0, canLob: false,
   menu: ['BEGIN', 'CONTROLS', 'MUTE: OFF'],
   menuIdx: 0,
-  pauseMenu: ['RESUME', 'RESTART CHAPTER', 'MUTE', 'QUIT TO TITLE'],
+  pauseMenu: ['RESUME', 'RESTART CHAPTER', 'DETAIL: AUTO', 'MUTE', 'QUIT TO TITLE'],
   pauseIdx: 0,
   titleRig: null,
   endRig: null,
@@ -344,6 +350,16 @@ G.updatePlay = function (dt) {
   Dialogue.update(dt);
   Cam.update(dt);
 
+  /* while somebody is talking the d-pad is dead weight over the words --
+     fade it out; a tap anywhere still advances the line */
+  if (Input.touch) {
+    const reading = Dialogue.active;
+    if (reading !== G._reading) {
+      G._reading = reading;
+      document.body.classList.toggle('reading', reading);
+    }
+  }
+
   if (G.cine) {
     if (G.cine.name === 'thumb') G.updateThumb(dt);
     else if (G.cine.name === 'finale') G.updateFinale(dt);
@@ -386,7 +402,11 @@ G.updatePause = function (dt) {
     Sound.play('uiBig');
     if (G.pauseIdx === 0) G.state = 'play';
     else if (G.pauseIdx === 1) { G.state = 'play'; Wipe.go(() => G.loadLevel(G.level.data.id, true), '#2a1626'); }
-    else if (G.pauseIdx === 2) Sound.setMuted(!Sound.muted);
+    else if (G.pauseIdx === 2) {
+      const order = ['auto', 'smooth', 'rich'];
+      G.setDetail(order[(order.indexOf(_detail) + 1) % order.length]);
+    }
+    else if (G.pauseIdx === 3) Sound.setMuted(!Sound.muted);
     else { G.state = 'title'; Sound.music('title'); }
   }
 };
@@ -409,21 +429,13 @@ G.draw = function (ctx) {
     const lv = G.level;
     if (lv) {
       drawLevel(ctx, lv, G.player, W, H, G.t);
-      /* colour grade + film */
+      /* the lens: grade + vignette, baked into one blit */
       const th = lv.theme;
-      if (th.grade) {
-        ctx.save();
-        ctx.globalCompositeOperation = 'overlay';
-        ctx.globalAlpha = th.grade[1];
-        ctx.fillStyle = th.grade[0];
-        ctx.fillRect(0, 0, W, H);
-        ctx.restore();
-      }
-      Clay.grain(ctx, W, H, 0.13);
-      Clay.vignette(ctx, W, H, th.vignette, th.vignetteTint);
+      Clay.grain(ctx, W, H, 0.13, RENDER_SCALE);
+      Clay.lens(ctx, W, H, lv.data.id, th.vignette, th.vignetteTint,
+        th.grade && th.grade[0], th.grade && th.grade[1]);
       drawHUD(ctx, G, W, H);
       Dialogue.draw(ctx, W, H);
-      drawTouchControls(ctx, W, H);
     }
     if (G.state === 'pause') drawPause(ctx, G, W, H);
   }
@@ -463,23 +475,47 @@ function drawControlsPanel(ctx, W, H) {
 
 let _canvas, _ctx, _last = 0;
 
+/* Rendering detail adapts to whatever machine this turns out to be running
+   on. It starts conservative on a touch device so the first impression is
+   smooth, then climbs back up if there is headroom. */
+let _res = 1;                       // backing-resolution multiplier
+let _detail = 'auto';               // auto | smooth | rich
+let _fAcc = 0, _fN = 0, _fastRuns = 0;
+
 function boot() {
   _canvas = document.getElementById('game');
-  _canvas.width = VIEW_W * RENDER_SCALE;
-  _canvas.height = VIEW_H * RENDER_SCALE;
   _ctx = _canvas.getContext('2d', { alpha: false });
   _ctx.imageSmoothingEnabled = true;
 
+  Input.detectTouch();
   Input.attach(_canvas);
-  layoutTouchControls();
+  if (Input.touch) _res = 0.8;
 
-  const start = () => { Sound.resume(); if (!Sound._musicKey) Sound.music('title'); };
+  /* iOS will not make a sound until an AudioContext is started inside a real
+     gesture, so the very first touch or key anywhere does the unlocking. */
+  const start = () => {
+    Sound.unlock();
+    if (!Sound._musicKey) Sound.music('title');
+  };
   addEventListener('keydown', start, { once: true });
-  _canvas.addEventListener('pointerdown', start, { once: true });
-  _canvas.addEventListener('touchstart', start, { once: true });
+  document.addEventListener('pointerdown', start, { once: true });
+  document.addEventListener('touchstart', start, { once: true });
+
+  /* Safari suspends audio when you switch tabs and does not always bring it
+     back on its own. */
+  document.addEventListener('visibilitychange', () => {
+    if (!Sound.ctx) return;
+    if (document.hidden) { try { Sound.ctx.suspend(); } catch (e) {} }
+    else { try { Sound.ctx.resume(); } catch (e) {} _last = performance.now(); }
+  });
 
   resize();
   addEventListener('resize', resize);
+  addEventListener('orientationchange', () => setTimeout(resize, 120));
+  if (window.visualViewport) visualViewport.addEventListener('resize', resize);
+
+  const veil = document.getElementById('boot');
+  if (veil) setTimeout(() => { veil.classList.add('gone'); setTimeout(() => veil.remove(), 600); }, 350);
 
   if (typeof setupShot === 'function' && setupShot(G)) {
     /* screenshot harness took over; it drives its own frames */
@@ -490,16 +526,85 @@ function boot() {
   requestAnimationFrame(frame);
 }
 
+/* Fix the canvas to whatever box the layout gave it, at a backing resolution
+   the device can actually push. */
 function resize() {
-  const cw = innerWidth, ch = innerHeight;
-  const scale = Math.min(cw / VIEW_W, ch / VIEW_H);
-  _canvas.style.width = Math.floor(VIEW_W * scale) + 'px';
-  _canvas.style.height = Math.floor(VIEW_H * scale) + 'px';
+  if (!_canvas) return;
+  const box = _canvas.parentElement;
+  const availW = Math.max(160, box.clientWidth);
+  const availH = Math.max(120, box.clientHeight);
+
+  VIEW_W = Math.round(clamp(VIEW_H * (availW / availH), VIEW_W_MIN, VIEW_W_MAX) / 2) * 2;
+
+  const fit = Math.min(availW / VIEW_W, availH / VIEW_H);
+  const cssW = Math.max(1, Math.floor(VIEW_W * fit));
+  const cssH = Math.max(1, Math.floor(VIEW_H * fit));
+
+  let scale = (cssW / VIEW_W) * Math.min(devicePixelRatio || 1, 2) * _res;
+  const budget = Math.sqrt(PIXEL_BUDGET / (VIEW_W * VIEW_H));
+  scale = clamp(Math.min(scale, budget), 1, 4);
+
+  RENDER_SCALE = scale;
+  _canvas.width = Math.round(VIEW_W * scale);
+  _canvas.height = Math.round(VIEW_H * scale);
+  _canvas.style.width = cssW + 'px';
+  _canvas.style.height = cssH + 'px';
+  _ctx = _canvas.getContext('2d', { alpha: false });
+  _ctx.imageSmoothingEnabled = true;
+
+  if (G.level) Cam.clamp(VIEW_W, VIEW_H);
 }
+
+/* Used by the screenshot harness: pin the exact store resolution. */
+G.forceViewport = function (w, scale) {
+  VIEW_W = w;
+  RENDER_SCALE = scale;
+  _canvas.width = Math.round(w * scale);
+  _canvas.height = Math.round(VIEW_H * scale);
+  _canvas.style.width = _canvas.width + 'px';
+  _canvas.style.height = _canvas.height + 'px';
+  _ctx = _canvas.getContext('2d', { alpha: false });
+  _ctx.imageSmoothingEnabled = true;
+};
+
+/* Give back resolution first and surface detail second. Never the other way
+   round: a slightly soft picture still reads as clay, a stuttering one
+   doesn't read as anything. */
+function watchPerf(dt) {
+  if (_detail !== 'auto') return;
+  _fAcc += dt; _fN++;
+  if (_fN < 45) return;
+  const avg = _fAcc / _fN;
+  _fAcc = 0; _fN = 0;
+
+  if (avg > 1 / 48) {
+    _fastRuns = 0;
+    if (_res > 0.5) { _res = Math.max(0.5, _res - 0.15); resize(); }
+    else if (Clay.quality) Clay.quality = 0;
+  } else if (avg < 1 / 57) {
+    /* only climb after several calm windows, so it never oscillates */
+    if (++_fastRuns >= 4) {
+      _fastRuns = 0;
+      if (!Clay.quality) Clay.quality = 1;
+      else if (_res < 1) { _res = Math.min(1, _res + 0.1); resize(); }
+    }
+  } else _fastRuns = 0;
+}
+
+G.setDetail = function (mode) {
+  _detail = mode;
+  if (mode === 'smooth') { _res = 0.55; Clay.quality = 0; }
+  else if (mode === 'rich') { _res = 1; Clay.quality = 1; }
+  else { _res = Input.touch ? 0.8 : 1; Clay.quality = 1; }
+  _fAcc = 0; _fN = 0; _fastRuns = 0;
+  G.pauseMenu[2] = 'DETAIL: ' + mode.toUpperCase();
+  resize();
+};
 
 function frame(now) {
   const dt = Math.min(0.05, (now - _last) / 1000);
   _last = now;
+  watchPerf(dt);
   G.update(dt);
   _ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
   G.draw(_ctx);
