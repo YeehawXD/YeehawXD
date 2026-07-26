@@ -24,7 +24,7 @@ const SHOTS = [
   ['15-ending', 'ending'],
 ];
 
-const OUT = 'screenshots';
+const OUT = process.env.SHOT_DIR || 'screenshots';
 fs.mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.launch();
@@ -33,9 +33,10 @@ for (const [name, shot] of SHOTS) {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
   page.on('pageerror', e => errs.push(`${shot}: ${e.message}`));
   page.on('console', m => { if (m.type() === 'error') errs.push(`${shot}: ${m.text()}`); });
-  await page.goto(`http://127.0.0.1:8099/index.html?shot=${shot}`, { waitUntil: 'load' });
+  const view = process.env.SHOT_VIEW === '2d' ? '&view=2d' : '';
+  await page.goto(`http://127.0.0.1:8099/index.html?shot=${shot}${view}`, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__shotReady === true, null, { timeout: 20000 });
-  const el = await page.$('#game');
+  const el = await page.$('#stack');
   await el.screenshot({ path: `${OUT}/${name}.png` });
   await page.close();
   console.log('captured', name);

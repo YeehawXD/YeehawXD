@@ -241,6 +241,7 @@ function setupShot(G) {
 
   const shot = SHOTS[name];
   const dt = 1 / 60;
+  if (q.get('view') === '2d' && G.setMode3D) G.setMode3D(false);
 
   Clay.quality = 1;
   Sound.muted = true;
@@ -259,11 +260,8 @@ function setupShot(G) {
   }
   if (shot.after) shot.after(G);
 
-  /* one settled draw */
-  const cv = document.getElementById('game');
-  const ctx = cv.getContext('2d');
-  ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
-  G.draw(ctx);
+  /* one settled draw, through whichever renderer is active */
+  G.render();
 
   window.__shotReady = true;
   document.title = 'shot:' + name;

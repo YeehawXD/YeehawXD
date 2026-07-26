@@ -16,7 +16,7 @@ const G = {
   t: 0, dt: 0,
   level: null, player: null,
   eyes: 0, canLob: false,
-  menu: ['BEGIN', 'CONTROLS', 'MUTE: OFF'],
+  menu: ['BEGIN', 'VIEW: 3D', 'CONTROLS', 'MUTE: OFF'],
   menuIdx: 0,
   pauseMenu: ['RESUME', 'RESTART CHAPTER', 'DETAIL: AUTO', 'MUTE', 'QUIT TO TITLE'],
   pauseIdx: 0,
@@ -282,7 +282,7 @@ G.update = function (dt) {
   if (UI.tipT > 0) UI.tipT -= dt;
   if (UI.card) { UI.card.t += dt; if (UI.card.t > UI.card.hold + 0.8) UI.card = null; }
 
-  if (Input.pressed.mute) { Sound.setMuted(!Sound.muted); G.menu[2] = 'MUTE: ' + (Sound.muted ? 'ON' : 'OFF'); }
+  if (Input.pressed.mute) { Sound.setMuted(!Sound.muted); G.menu[3] = 'MUTE: ' + (Sound.muted ? 'ON' : 'OFF'); }
 
   switch (G.state) {
     case 'title': G.updateTitle(dt); break;
@@ -327,10 +327,12 @@ G.updateTitle = function (dt) {
     if (G.menuIdx === 0) {
       Wipe.go(() => { G.state = 'play'; G.reset(); G.loadLevel('sill'); }, '#2a1626');
     } else if (G.menuIdx === 1) {
+      G.setMode3D(!_mode3d);
+    } else if (G.menuIdx === 2) {
       G.showControls = true;
     } else {
       Sound.setMuted(!Sound.muted);
-      G.menu[2] = 'MUTE: ' + (Sound.muted ? 'ON' : 'OFF');
+      G.menu[3] = 'MUTE: ' + (Sound.muted ? 'ON' : 'OFF');
     }
   }
 };
@@ -429,17 +431,27 @@ G.draw = function (ctx) {
     const lv = G.level;
     if (lv) {
       drawLevel(ctx, lv, G.player, W, H, G.t);
-      /* the lens: grade + vignette, baked into one blit */
-      const th = lv.theme;
-      Clay.grain(ctx, W, H, 0.13, RENDER_SCALE);
-      Clay.lens(ctx, W, H, lv.data.id, th.vignette, th.vignetteTint,
-        th.grade && th.grade[0], th.grade && th.grade[1]);
-      drawHUD(ctx, G, W, H);
-      Dialogue.draw(ctx, W, H);
+      G.drawOverlay(ctx, W, H);
+      return;
     }
     if (G.state === 'pause') drawPause(ctx, G, W, H);
   }
 
+  Wipe.draw(ctx, W, H);
+};
+
+/* Everything that sits on top of the world: film, HUD, words. Shared by both
+   renderers, so the interface is identical in 2D and 3D. */
+G.drawOverlay = function (ctx, W, H) {
+  const lv = G.level;
+  const th = lv.theme;
+  if (_mode3d) Scene3D.drawLabels(ctx, W, H);
+  Clay.grain(ctx, W, H, _mode3d ? 0.085 : 0.13, RENDER_SCALE);
+  Clay.lens(ctx, W, H, lv.data.id + (_mode3d ? '3' : ''), th.vignette, th.vignetteTint,
+    th.grade && th.grade[0], th.grade && th.grade[1]);
+  drawHUD(ctx, G, W, H);
+  Dialogue.draw(ctx, W, H);
+  if (G.state === 'pause') drawPause(ctx, G, W, H);
   Wipe.draw(ctx, W, H);
 };
 
@@ -474,6 +486,8 @@ function drawControlsPanel(ctx, W, H) {
 /* ---------------------------------------------------------------------- */
 
 let _canvas, _ctx, _last = 0;
+let _paint, _pctx, _glc;
+let _mode3d = false;
 
 /* Rendering detail adapts to whatever machine this turns out to be running
    on. It starts conservative on a touch device so the first impression is
@@ -484,8 +498,16 @@ let _fAcc = 0, _fN = 0, _fastRuns = 0;
 
 function boot() {
   _canvas = document.getElementById('game');
-  _ctx = _canvas.getContext('2d', { alpha: false });
+  _paint = document.getElementById('paint');
+  _glc = document.getElementById('gl');
+  _pctx = _paint ? _paint.getContext('2d', { alpha: false }) : null;
+  _ctx = _canvas.getContext('2d', { alpha: true });
   _ctx.imageSmoothingEnabled = true;
+
+  /* sculpted, if the machine can manage it */
+  _mode3d = !!(_glc && GL3.init(_glc));
+  document.body.classList.toggle('mode2d', !_mode3d);
+  G.menu[1] = _mode3d ? 'VIEW: 3D' : 'VIEW: 2D';
 
   Input.detectTouch();
   Input.attach(_canvas);
@@ -530,7 +552,7 @@ function boot() {
    the device can actually push. */
 function resize() {
   if (!_canvas) return;
-  const box = _canvas.parentElement;
+  const box = _canvas.parentElement.parentElement;
   const availW = Math.max(160, box.clientWidth);
   const availH = Math.max(120, box.clientHeight);
 
@@ -545,12 +567,21 @@ function resize() {
   scale = clamp(Math.min(scale, budget), 1, 4);
 
   RENDER_SCALE = scale;
-  _canvas.width = Math.round(VIEW_W * scale);
-  _canvas.height = Math.round(VIEW_H * scale);
-  _canvas.style.width = cssW + 'px';
-  _canvas.style.height = cssH + 'px';
-  _ctx = _canvas.getContext('2d', { alpha: false });
+  const bw = Math.round(VIEW_W * scale), bh = Math.round(VIEW_H * scale);
+
+  for (const c of [_paint, _glc, _canvas]) {
+    if (!c) continue;
+    if (c.width !== bw || c.height !== bh) { c.width = bw; c.height = bh; }
+    c.style.width = cssW + 'px';
+    c.style.height = cssH + 'px';
+  }
+  const stack = document.getElementById('stack');
+  if (stack) { stack.style.width = cssW + 'px'; stack.style.height = cssH + 'px'; }
+
+  _ctx = _canvas.getContext('2d', { alpha: true });
   _ctx.imageSmoothingEnabled = true;
+  if (_pctx) { _pctx = _paint.getContext('2d', { alpha: false }); _pctx.imageSmoothingEnabled = true; }
+  if (_mode3d) GL3.resize(bw, bh);
 
   if (G.level) Cam.clamp(VIEW_W, VIEW_H);
 }
@@ -559,12 +590,27 @@ function resize() {
 G.forceViewport = function (w, scale) {
   VIEW_W = w;
   RENDER_SCALE = scale;
-  _canvas.width = Math.round(w * scale);
-  _canvas.height = Math.round(VIEW_H * scale);
-  _canvas.style.width = _canvas.width + 'px';
-  _canvas.style.height = _canvas.height + 'px';
-  _ctx = _canvas.getContext('2d', { alpha: false });
+  const bw = Math.round(w * scale), bh = Math.round(VIEW_H * scale);
+  for (const c of [_paint, _glc, _canvas]) {
+    if (!c) continue;
+    c.width = bw; c.height = bh;
+    c.style.width = bw + 'px'; c.style.height = bh + 'px';
+  }
+  const stack = document.getElementById('stack');
+  if (stack) { stack.style.width = bw + 'px'; stack.style.height = bh + 'px'; }
+  _ctx = _canvas.getContext('2d', { alpha: true });
   _ctx.imageSmoothingEnabled = true;
+  if (_pctx) _pctx = _paint.getContext('2d', { alpha: false });
+  if (_mode3d) GL3.resize(bw, bh);
+};
+
+G.setMode3D = function (on) {
+  if (on && !GL3.ok) return;
+  _mode3d = !!on;
+  document.body.classList.toggle('mode2d', !_mode3d);
+  G.menu[1] = _mode3d ? 'VIEW: 3D' : 'VIEW: 2D';
+  Scene3D.levelId = null;
+  resize();
 };
 
 /* Give back resolution first and surface detail second. Never the other way
@@ -581,6 +627,12 @@ function watchPerf(dt) {
     _fastRuns = 0;
     if (_res > 0.5) { _res = Math.max(0.5, _res - 0.15); resize(); }
     else if (Clay.quality) Clay.quality = 0;
+    else if (_mode3d) {
+      /* out of things to give back: the sculpted view is costing more than
+         this machine has, so hand it the painted one, which always runs */
+      G.setMode3D(false);
+      _res = 0.8; Clay.quality = 1;
+    }
   } else if (avg < 1 / 57) {
     /* only climb after several calm windows, so it never oscillates */
     if (++_fastRuns >= 4) {
@@ -606,9 +658,33 @@ function frame(now) {
   _last = now;
   watchPerf(dt);
   G.update(dt);
-  _ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
-  G.draw(_ctx);
+  G.render();
   requestAnimationFrame(frame);
 }
+
+/* One frame, across however many layers this mode uses. */
+G.render = function () {
+  const W = VIEW_W, H = VIEW_H;
+  if (_mode3d && G.state === 'play' || _mode3d && G.state === 'pause') {
+    const lv = G.level;
+    if (lv) {
+      setClayLight(lv.theme.key, lv.theme.shadow);
+      _pctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
+      _pctx.save();
+      lv.theme.back(_pctx, { x: Cam.viewX(), y: Cam.viewY() }, W, H, G.t);
+      _pctx.restore();
+      GL3.clear();
+      Scene3D.frame(lv, G.player, W, H, G.t);
+      _ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
+      _ctx.clearRect(0, 0, W, H);
+      G.drawOverlay(_ctx, W, H);
+      return;
+    }
+  }
+  if (_mode3d) { GL3.clear(); if (_pctx) { _pctx.setTransform(1, 0, 0, 1, 0, 0); _pctx.clearRect(0, 0, _paint.width, _paint.height); } }
+  _ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
+  _ctx.clearRect(0, 0, W, H);
+  G.draw(_ctx);
+};
 
 addEventListener('DOMContentLoaded', boot);

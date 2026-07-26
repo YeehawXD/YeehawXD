@@ -92,6 +92,46 @@ straight into Electron or NW.js for a Steam build, and drops onto itch.io as-is.
 
 ---
 
+## It is in 3D
+
+The world is sculpted, not painted. `src/gl3d.js` is a small WebGL2 renderer
+written for exactly one material — clay — with no library behind it: two
+shaders, a unit sphere, a unit capsule and an instance batcher. Every character
+in the game, every limb and every eye, is one of those two primitives with a
+matrix and a colour. The ground is one static mesh per chapter, extruded out of
+the same traced outlines the 2D renderer draws.
+
+Nothing about the game changed. Same tile grid, same physics, same script,
+same interface. `src/scene3d.js` only re-reads that state as geometry.
+
+What makes it read as clay rather than as plastic:
+
+- **Nothing is a true sphere.** The vertex shader displaces every surface by a
+  sum of sine harmonics seeded per object — the same lumping the 2D renderer
+  uses, in three dimensions — and corrects the normal with the surface
+  gradient so the lighting follows the lump.
+- **BOIL, still.** The lump phase is driven by `Clay.frame`, so the models
+  themselves simmer at twelve frames a second while the game runs at sixty.
+- **Thumbprints are in the normal.** Object-space value noise perturbs the
+  shading normal, twice, at two frequencies: pressed marks and then the grain
+  of the clay itself. Fired things — Steve, Glaze — skip it entirely and get a
+  tight specular instead, so the material contrast that the story runs on
+  survives the move.
+- **Wrapped diffuse.** Clay is soft and slightly translucent, so it does not
+  fall to black at the terminator, and light scatters through its thin edges.
+- The picture is three stacked layers: the painted parallax backdrop on a 2D
+  canvas, the 3D world, and the interface on a transparent 2D canvas on top —
+  so the HUD, the dialogue, the film grain and the lens are pixel-identical in
+  both modes.
+
+`VIEW: 3D / 2D` on the title screen switches renderers at any time. The
+original hand-drawn 2D renderer is still there, in full, and the game falls
+back to it automatically if WebGL2 is missing — or if a device turns out not to
+have the muscle for the sculpted view after the detail tuner has given back
+everything else it can.
+
+---
+
 ## On a phone
 
 It is built to be played on a phone, not merely to survive on one.
@@ -170,6 +210,8 @@ src/clay.js           THE RENDERER — material, blobs, terrain outlines, grain
 src/themes.js         six rooms: sky, parallax backdrop, light and dirt
 src/audio.js          procedural SFX, character voices, generative score
 src/fx.js             particles, camera, the clay-blob screen wipe
+src/gl3d.js           the WebGL2 clay renderer: shaders, meshes, batcher
+src/scene3d.js        the world as geometry: terrain extrusion, 3D rigs
 src/input.js          keyboard, gamepad, touch
 src/norbert.js        the hero's rig
 src/cast.js           Gary, Pippa, Steve, Beans, Glaze, the Council, the Thumb

@@ -53,11 +53,17 @@
     position: relative;
   }
 
+  /* three stacked layers: the painted backdrop, the 3D world, and the 2D
+     interface. In classic 2D mode only #game is used and it draws the lot. */
+  #stack { position: relative; display: block; }
+  #stack canvas { display: block; }
+  #paint, #gl { position: absolute; left: 0; top: 0; }
   #game {
-    display: block;
+    position: relative;
     box-shadow: 0 18px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,220,180,.06);
     border-radius: 2px;
   }
+  body.mode2d #paint, body.mode2d #gl { display: none; }
 
   /* ---- boot veil ---- */
   #boot {
@@ -207,7 +213,11 @@
 <body>
 <div id="shell">
   <div id="stagewrap">
-    <canvas id="game" width="1920" height="1080"></canvas>
+    <div id="stack">
+      <canvas id="paint" width="1920" height="1080"></canvas>
+      <canvas id="gl" width="1920" height="1080"></canvas>
+      <canvas id="game" width="1920" height="1080"></canvas>
+    </div>
     <button id="pausebtn" data-act="pause" aria-label="Pause">❚❚</button>
     <div id="hint">turn your phone sideways for the full picture</div>
     <div id="boot">warming the clay…</div>
@@ -233,12 +243,14 @@
 <script src="src/themes.js"></script>
 <script src="src/audio.js"></script>
 <script src="src/fx.js"></script>
+<script src="src/gl3d.js"></script>
 <script src="src/input.js"></script>
 <script src="src/norbert.js"></script>
 <script src="src/cast.js"></script>
 <script src="src/dialogue.js"></script>
 <script src="src/world.js"></script>
 <script src="src/levels.js"></script>
+<script src="src/scene3d.js"></script>
 <script src="src/ui.js"></script>
 <script src="src/shots.js"></script>
 <script src="src/game.js"></script>
