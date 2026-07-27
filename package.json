@@ -1,0 +1,15 @@
+{
+  "name": "norbert-unfinished",
+  "version": "1.0.0",
+  "description": "A very short adventure about not being ready. A cozy clay puzzle-platformer drawn entirely from maths at runtime.",
+  "private": true,
+  "scripts": {
+    "start": "http-server -p 8099 -s -c-1 .",
+    "build": "node tools/build.mjs",
+    "shots": "node tools/screenshots.mjs",
+    "test": "node tools/reach.mjs && node tools/smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}
