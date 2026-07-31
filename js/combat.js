@@ -97,6 +97,8 @@ window.COC = window.COC || {};
     this.autoUlt = opts.autoUlt !== false;
     this.relics = opts.relics || [];
     this.speed = 1;
+    this.hitstop = 0;      // §8: impact pause, consumed by the render loop
+    this.allyHurt = 0;     // §7: drives the red damage vignette
 
     (opts.allies || []).forEach((e) => this.units.push(makeUnit(e, 'ally', this)));
     (opts.foes || []).forEach((e) => this.units.push(makeUnit(e, 'foe', this)));
@@ -257,6 +259,13 @@ window.COC = window.COC || {};
         type: 'dmg', uid: tgt.uid, v: Math.round(dmg), t: 0, life: 0.8,
         crit: advantage > 1, weak: advantage < 1,
       });
+      // §7: damage vignette when it is your team bleeding
+      if (tgt.side === 'ally') this.allyHurt = Math.min(1, this.allyHurt + 0.45);
+      // §7 + §8: a super-effective hit gets a flash and a beat of hitstop
+      if (advantage > 1) {
+        this.hitstop = Math.max(this.hitstop, 0.05);
+        this.fx.push({ type: 'critflash', uid: tgt.uid, t: 0, life: 0.38 });
+      }
     }
 
     // Voidpaw drains life from everything it touches
@@ -314,7 +323,10 @@ window.COC = window.COC || {};
     }
     u.dead = true;
     u.hp = 0;
-    this.fx.push({ type: 'ko', uid: u.uid, t: 0, life: 0.9 });
+    this.fx.push({
+      type: 'ko', uid: u.uid, t: 0, life: 0.9,
+      role: u.def.role, glow: R.ELEMENTS[u.def.element].glow,
+    });
     if (src) {
       src.kills++;
       if (src.def.id === 'pip') this.heal(src, src, src.maxHp * 0.08);  // Second Sprout
@@ -324,8 +336,20 @@ window.COC = window.COC || {};
 
   Battle.prototype.checkEnd = function () {
     if (this.state !== 'fighting') return;
-    if (!this.side('foe').length) { this.state = 'won'; this.endedAt = this.time; }
-    else if (!this.side('ally').length) { this.state = 'lost'; this.endedAt = this.time; }
+    if (!this.side('foe').length) {
+      this.state = 'won';
+      this.endedAt = this.time;
+      // §7: confetti rain in the team's element colours
+      const colors = [];
+      this.allOf('ally').forEach((u) => {
+        const g = R.ELEMENTS[u.def.element].glow;
+        if (colors.indexOf(g) < 0) colors.push(g);
+      });
+      this.fx.push({ type: 'confetti', t: 0, life: 1.7, seed: this.seed >>> 3, colors });
+    } else if (!this.side('ally').length) {
+      this.state = 'lost';
+      this.endedAt = this.time;
+    }
   };
 
   // ---------------------------------------------------------------- abilities
@@ -335,6 +359,7 @@ window.COC = window.COC || {};
     u.energy = 0;
     u.anim.attack = 0.001;
     u.ultFlash = 0.9;
+    this.hitstop = Math.max(this.hitstop, 0.07);
     this.fx.push({ type: 'ult', uid: u.uid, name: ult.name, t: 0, life: 1.1, side: u.side });
     this.log.push({ t: this.time, side: u.side, msg: u.def.name + ' — ' + ult.name });
 
@@ -487,6 +512,7 @@ window.COC = window.COC || {};
     if (this.state !== 'fighting') { this.tickFx(dt); return; }
 
     this.time += dt;
+    if (this.allyHurt > 0) this.allyHurt = Math.max(0, this.allyHurt - dt * 1.7);
 
     /* Two teams of healers, or a lone Mender against a lone Guardian, can hold
      * each other forever. After a grace period everything starts taking

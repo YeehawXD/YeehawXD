@@ -196,6 +196,19 @@ window.COC = window.COC || {};
     order.forEach((u) => drawUnit(ctx, battle, u, t, ui));
     battle.fx.forEach((f) => drawFx(ctx, battle, f));
 
+    // §7: a brief red vignette when your own team takes a hit — never so
+    // strong that it costs readability
+    if (battle.allyHurt > 0) {
+      const a = Math.min(0.34, battle.allyHurt * 0.34);
+      const vg = ctx.createRadialGradient(
+        View.w / 2, View.h / 2, Math.min(View.w, View.h) * 0.38,
+        View.w / 2, View.h / 2, Math.max(View.w, View.h) * 0.72);
+      vg.addColorStop(0, 'rgba(200,40,50,0)');
+      vg.addColorStop(1, 'rgba(200,40,50,' + a + ')');
+      ctx.fillStyle = vg;
+      ctx.fillRect(0, 0, View.w, View.h);
+    }
+
     ctx.restore();
   };
 
@@ -355,6 +368,27 @@ window.COC = window.COC || {};
       ctx.fill();
     }
 
+    // §7: colour-coded status pips — green up for buffs, purple down for
+    // debuffs, plus one dot per active condition
+    let px = x;
+    const py = y - h * 1.5 - 2;
+    const pip = (color, up) => {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      if (up == null) { ctx.arc(px + 3, py + 3, 3, 0, U.TAU); }
+      else if (up) { ctx.moveTo(px, py + 6); ctx.lineTo(px + 3, py); ctx.lineTo(px + 6, py + 6); ctx.closePath(); }
+      else { ctx.moveTo(px, py); ctx.lineTo(px + 6, py); ctx.lineTo(px + 3, py + 6); ctx.closePath(); }
+      ctx.fill();
+      px += 8;
+    };
+    let hasBuff = false, hasDebuff = false;
+    for (const b2 of u.buffs) { if (b2.pct > 0) hasBuff = true; else hasDebuff = true; }
+    if (hasBuff) pip('#62d68a', true);
+    if (hasDebuff) pip('#c07ae0', false);
+    if (C.hasStatus(u, 'burn')) pip('#ff8a3c', null);
+    if (C.hasStatus(u, 'chill')) pip('#8fd8ff', null);
+    if (C.hasStatus(u, 'stun')) pip('#ffe08a', null);
+
     // energy
     const ey = y + h + 2;
     const eh = Math.max(3, scale * 0.055);
@@ -406,7 +440,7 @@ window.COC = window.COC || {};
         if (f.crit || f.weak) {
           ctx.font = '800 ' + size * 0.46 + 'px system-ui, sans-serif';
           ctx.fillStyle = f.crit ? '#ffd45e' : '#9fb0c8';
-          ctx.fillText(f.crit ? 'SUPER' : 'RESIST', 0, size * 0.70);
+          ctx.fillText(f.crit ? 'STÆRKT!' : 'SVAGT', 0, size * 0.70);
         }
         break;
       }
@@ -525,13 +559,88 @@ window.COC = window.COC || {};
       case 'ko': {
         ctx.translate(p.x, p.y);
         ctx.globalAlpha = 1 - k;
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        for (let i = 0; i < 8; i++) {
-          const a = (i / 8) * U.TAU;
-          const r = k * scale * 1.1;
+        if (f.role === 'tank') {
+          // §8: a tank falls heavily — ground dust, and one thud of shake
+          if (!f._thud) { f._thud = true; View.shake = Math.max(View.shake, 0.5); }
+          ctx.strokeStyle = 'rgba(214,196,168,0.8)';
+          ctx.lineWidth = scale * 0.14 * (1 - k);
           ctx.beginPath();
-          ctx.arc(Math.cos(a) * r, -scale * 0.5 + Math.sin(a) * r * 0.7, scale * 0.13 * (1 - k), 0, U.TAU);
-          ctx.fill();
+          ctx.ellipse(0, 0, scale * (0.3 + k * 1.0), scale * (0.12 + k * 0.36), 0, 0, U.TAU);
+          ctx.stroke();
+          for (let i = 0; i < 6; i++) {
+            const a = (i / 6) * U.TAU;
+            const r = scale * (0.3 + k * 0.9);
+            ctx.fillStyle = 'rgba(190,172,150,0.7)';
+            ctx.beginPath();
+            ctx.arc(Math.cos(a) * r, Math.sin(a) * r * 0.3 - k * scale * 0.2, scale * 0.1 * (1 - k), 0, U.TAU);
+            ctx.fill();
+          }
+        } else if (f.role === 'snigmorder') {
+          // an assassin is simply gone — a swirl of dark smoke
+          for (let i = 0; i < 5; i++) {
+            const a = k * 5 + (i / 5) * U.TAU;
+            const r = scale * 0.34 * (1 - k * 0.4);
+            ctx.fillStyle = 'rgba(42,34,52,' + 0.7 * (1 - k) + ')';
+            ctx.beginPath();
+            ctx.arc(Math.cos(a) * r, -scale * (0.3 + k * 0.8) + Math.sin(a) * r * 0.5,
+              scale * 0.16 * (1 - k * 0.5), 0, U.TAU);
+            ctx.fill();
+          }
+        } else {
+          // everyone else dissolves into their element's light
+          ctx.fillStyle = f.glow || 'rgba(255,255,255,0.9)';
+          for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * U.TAU;
+            const r = k * scale * 1.1;
+            ctx.beginPath();
+            ctx.arc(Math.cos(a) * r, -scale * 0.5 + Math.sin(a) * r * 0.7 - k * scale * 0.4,
+              scale * 0.12 * (1 - k), 0, U.TAU);
+            ctx.fill();
+          }
+        }
+        break;
+      }
+      case 'critflash': {
+        // §7: a sharp, short flash on a super-effective hit + a micro-shake
+        if (!f._shook) { f._shook = true; View.shake = Math.max(View.shake, 0.32); }
+        ctx.translate(p.x, p.y - scale * 0.5);
+        const g2 = ctx.createRadialGradient(0, 0, 0, 0, 0, scale * (0.5 + k * 0.9));
+        g2.addColorStop(0, 'rgba(255,248,220,' + 0.85 * (1 - k) + ')');
+        g2.addColorStop(1, 'rgba(255,214,120,0)');
+        ctx.fillStyle = g2;
+        ctx.beginPath(); ctx.arc(0, 0, scale * (0.5 + k * 0.9), 0, U.TAU); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,240,190,' + (1 - k) + ')';
+        ctx.lineWidth = scale * 0.08 * (1 - k);
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * U.TAU + 0.4;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * scale * 0.4, Math.sin(a) * scale * 0.4);
+          ctx.lineTo(Math.cos(a) * scale * (0.6 + k * 0.7), Math.sin(a) * scale * (0.6 + k * 0.7));
+          ctx.stroke();
+        }
+        break;
+      }
+      case 'confetti': {
+        // §7: victory rain in the team's own colours
+        const rng2 = U.rng(f.seed || 1);
+        const n2 = 42;
+        for (let i = 0; i < n2; i++) {
+          const cx2 = rng2.range(0, View.w);
+          const speed2 = rng2.range(0.6, 1.15);
+          const size2 = rng2.range(4, 8);
+          const col2 = (f.colors && f.colors.length)
+            ? f.colors[i % f.colors.length] : '#ffd58a';
+          const rot2 = rng2.range(0, U.TAU);
+          const kk = Math.min(1, k * speed2 * 1.35);
+          const y2 = -20 + kk * (View.h * 0.95);
+          const x2 = cx2 + Math.sin(k * 6 + i) * 26;
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, (1.1 - kk) * 2);
+          ctx.translate(x2, y2);
+          ctx.rotate(rot2 + k * 7 * (i % 2 ? 1 : -1));
+          ctx.fillStyle = col2;
+          ctx.fillRect(-size2 / 2, -size2 / 3, size2, size2 * 0.66);
+          ctx.restore();
         }
         break;
       }

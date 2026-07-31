@@ -29,8 +29,18 @@ window.COC = window.COC || {};
     _thumbs: {},
   };
 
-  const NODE_ICON = {
-    battle: '⚔️', elite: '☠️', shop: '🛒', rest: '🔥', treasure: '🎁', boss: '👑',
+  const Icons = NS.Icons;
+  /* §6.3: every node type gets a hand-drawn badge in the shared icon language. */
+  const NODE_META = {
+    battle: { icon: 'swords', color: '#c0604a' },
+    elite: { icon: 'skull', color: '#9a5f88' },
+    shop: { icon: 'bag', color: '#c09a3f' },
+    rest: { icon: 'campfire', color: '#d0763a' },
+    treasure: { icon: 'chest', color: '#8a6fd0' },
+    boss: { icon: 'crown', color: '#d04a5f' },
+  };
+  const ROLE_ICON = {
+    tank: 'shield', skader: 'arrow', stotte: 'heart', kontrol: 'swirl', snigmorder: 'dagger',
   };
   const NODE_NAME = {
     battle: 'Kamp', elite: 'Elite', shop: 'Bod', rest: 'Lejr', treasure: 'Fund', boss: 'Boss',
@@ -85,6 +95,7 @@ window.COC = window.COC || {};
     const el = $('#s-' + name);
     if (el) el.classList.add('active');
     UI.screen = name;
+    if (NS.Scenery) NS.Scenery.activate(el, UI);
     const fn = UI['render' + name.charAt(0).toUpperCase() + name.slice(1)];
     if (fn) fn();
   };
@@ -144,20 +155,71 @@ window.COC = window.COC || {};
     el.style.setProperty('--grade', R.GRADE[critter.grade].color);
     el.dataset.id = critter.id;
     el.appendChild(cloneThumb(critter, opts.size || 96));
-    const dot = U.el('i', 'el');
-    dot.style.background = R.ELEMENTS[critter.element].color;
-    el.appendChild(dot);
-    if (opts.level) el.appendChild(U.el('span', 'lv', 'N' + opts.level));
-    const stars = U.el('span', 'stars');
-    const n = R.RARITY[critter.rarity].stars;
-    for (let i = 0; i < n; i++) stars.appendChild(U.el('i', null, '\u2605'));
-    stars.style.color = R.RARITY[critter.rarity].color;
+    const elm = R.ELEMENTS[critter.element];
+    const badge = Icons.el(elm.icon, 18, elm.color);
+    badge.className = 'el';
+    el.appendChild(badge);
+    if (opts.level) el.appendChild(U.el('span', 'lv', 'Niv ' + opts.level));
+    const ri = Icons.el(ROLE_ICON[critter.role], 14, R.ROLES[critter.role].color);
+    ri.className = 'role-ico';
+    el.appendChild(ri);
+    // §1.4: rarity stars directly on the card
+    const rar = R.RARITY[critter.rarity];
+    const stars = Icons.stars(rar.stars, rar.color, 8);
+    stars.className = 'stars';
     el.appendChild(stars);
-    const rd = U.el('i', 'role-dot');
-    rd.style.background = R.ROLES[critter.role].color;
-    el.appendChild(rd);
     el.appendChild(U.el('span', 'nm', critter.name));
     return el;
+  };
+
+  /* §7: unlocking a new critter is a reveal — silhouette, then light, then the
+   * figure — not a thumbnail that simply exists. */
+  UI.revealEl = function (critter, size) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const cv = document.createElement('canvas');
+    cv.width = size * dpr; cv.height = size * dpr;
+    cv.style.width = '100%'; cv.style.height = '100%';
+    const ctx = cv.getContext('2d');
+    const src = UI.thumb(critter, size);
+    const t0 = performance.now();
+    const DUR = 950;
+    (function anim() {
+      const k = Math.min(1, (performance.now() - t0) / DUR);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, size, size);
+      ctx.drawImage(src, 0, 0, size, size);
+      if (k < 0.5) {
+        // dark silhouette over a slow-building glow
+        ctx.globalCompositeOperation = 'source-in';
+        ctx.fillStyle = '#20183a';
+        ctx.fillRect(0, 0, size, size);
+        ctx.globalCompositeOperation = 'destination-over';
+        const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size * 0.6);
+        g.addColorStop(0, U.rgba('#ffd58a', 0.55 * (k / 0.5)));
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, size, size);
+        ctx.globalCompositeOperation = 'source-over';
+      } else if (k < 0.64) {
+        // the flash
+        ctx.globalCompositeOperation = 'source-in';
+        ctx.fillStyle = '#fff6dc';
+        ctx.fillRect(0, 0, size, size);
+        ctx.globalCompositeOperation = 'source-over';
+      } else {
+        // full figure with a fading light ring
+        const q = (k - 0.64) / 0.36;
+        ctx.globalAlpha = 1 - q;
+        ctx.strokeStyle = '#ffd58a';
+        ctx.lineWidth = 2.5 * (1 - q);
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, (size * 0.2) + q * size * 0.42, 0, U.TAU);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      if (k < 1 && cv.isConnected || (k < 1 && performance.now() - t0 < 3000)) requestAnimationFrame(anim);
+    })();
+    return cv;
   };
 
   // ---------------------------------------------------------------- title
@@ -238,7 +300,8 @@ window.COC = window.COC || {};
     const strip = $('#relic-strip');
     strip.innerHTML = '';
     run.relicObjects().forEach((r) => {
-      const pip = U.el('div', 'relic-pip', relicGlyph(r.icon));
+      const pip = U.el('div', 'relic-pip');
+      pip.appendChild(Icons.el(r.icon, 21, '#8a76c0'));
       pip.title = r.name + ' — ' + r.text;
       pip.addEventListener('click', () => UI.toast(r.name + ': ' + r.text));
       strip.appendChild(pip);
@@ -270,7 +333,8 @@ window.COC = window.COC || {};
         const btn = U.el('button', 'map-node');
         btn.type = 'button';
         btn.dataset.type = node.type;
-        btn.appendChild(document.createTextNode(NODE_ICON[node.type]));
+        const meta = NODE_META[node.type];
+        btn.appendChild(Icons.el(meta.icon, node.type === 'boss' ? 46 : 34, meta.color));
         btn.appendChild(U.el('span', 'node-name', NODE_NAME[node.type]));
         const here = run.pos && run.pos.row === r && run.pos.idx === i;
         if (here) btn.classList.add('current');
@@ -336,11 +400,11 @@ window.COC = window.COC || {};
     inner.insertBefore(svg, inner.firstChild);
   }
 
-  function relicGlyph(icon) {
-    return ({
-      sun: '☀️', shield: '🛡️', wind: '🌬️', rock: '🪨', drop: '💧', fang: '🦷',
-      bow: '🏹', clover: '🍀', leaf: '🍃', gem: '💎', lamp: '🏮', horn: '📯', feather: '🪶',
-    })[icon] || '✨';
+  function iconInto(box, name, color) {
+    box.innerHTML = '';
+    const c = Icons.el(name, 40, color);
+    c.className = 'ico';
+    box.appendChild(c);
   }
 
   UI.enterNode = function (r, i) {
@@ -397,9 +461,10 @@ window.COC = window.COC || {};
     // bench
     const bench = $('#bench');
     bench.innerHTML = '';
-    run.roster.forEach((e) => {
+    run.roster.forEach((e, idx) => {
       const c = R.get(e.id);
       const card = UI.card(c, { size: 90, level: run.levelOf(e) });
+      card.style.animationDelay = (idx * 24) + 'ms';
       if (run.formation.includes(e.id)) card.classList.add('deployed');
       if (UI.pick === e.id) card.classList.add('chosen');
       card.addEventListener('click', () => UI.tapBench(e.id));
@@ -546,7 +611,10 @@ window.COC = window.COC || {};
       last = now;
       if (dt > 0.25) dt = 0.25;          // a backgrounded tab must not fast-forward
       const b = UI.battle;
-      if (b.state === 'intro' || b.state === 'fighting') {
+      if (b.hitstop > 0) {
+        // §8: a few frozen frames on a heavy impact give the hit its weight
+        b.hitstop -= dt;
+      } else if (b.state === 'intro' || b.state === 'fighting') {
         acc += dt * UI.speed;
         let n = 0;
         while (acc >= STEP && n < 12) { b.update(STEP); acc -= STEP; n++; }
@@ -658,7 +726,7 @@ window.COC = window.COC || {};
     const ico = U.el('div', 'cico');
     const txt = U.el('div', 'ctxt');
     if (rw.kind === 'recruit') {
-      ico.appendChild(cloneThumb(rw.critter, 52));
+      ico.appendChild(UI.revealEl(rw.critter, 52));
       txt.appendChild(U.el('b', null, 'Hverv ' + rw.critter.name));
       txt.appendChild(U.el('span', null,
         R.ELEMENTS[rw.critter.element].name + ' ' + R.ROLES[rw.critter.role].name +
@@ -668,11 +736,11 @@ window.COC = window.COC || {};
       txt.appendChild(U.el('b', null, rw.title));
       txt.appendChild(U.el('span', null, 'Mere liv, angreb og forsvar.'));
     } else if (rw.kind === 'relic') {
-      ico.textContent = relicGlyph(rw.relic.icon);
+      iconInto(ico, rw.relic.icon, '#8a76c0');
       txt.appendChild(U.el('b', null, rw.relic.name));
       txt.appendChild(U.el('span', null, rw.relic.text));
     } else {
-      ico.textContent = '💰';
+      iconInto(ico, 'coin', '#c09a3f');
       txt.appendChild(U.el('b', null, '+' + rw.amount + ' guld'));
       txt.appendChild(U.el('span', null, 'Brug det ved næste bod.'));
     }
@@ -718,7 +786,7 @@ window.COC = window.COC || {};
         UI.renderShop();
       });
       if (item.kind === 'heal') {
-        b.querySelector('.cico').textContent = '🍲';
+        iconInto(b.querySelector('.cico'), 'pot', '#7a9a4a');
         b.querySelector('.ctxt b').textContent = item.title;
         b.querySelector('.ctxt span').textContent = 'Giv hele holdet 50% liv tilbage.';
       }
@@ -741,11 +809,11 @@ window.COC = window.COC || {};
     wrap.innerHTML = '';
     const opts = [
       {
-        icon: '🔥', title: 'Hvil', text: 'Giv hver kritter 60% liv tilbage.',
+        icon: 'campfire', color: '#d0763a', title: 'Hvil', text: 'Giv hver kritter 60% liv tilbage.',
         go: () => run.restHeal(0.6),
       },
       {
-        icon: '📖', title: 'Træn', text: 'Giv én kritter +3 niveauer.',
+        icon: 'book', color: '#8a6fd0', title: 'Træn', text: 'Giv én kritter +3 niveauer.',
         go: () => {
           const e = run.rng.pick(run.roster);
           e.bonus = (e.bonus || 0) + 3;
@@ -753,14 +821,15 @@ window.COC = window.COC || {};
         },
       },
       {
-        icon: '🍀', title: 'Sank', text: 'Find 90 guld og få 20% liv tilbage.',
+        icon: 'clover', color: '#5fa84a', title: 'Sank', text: 'Find 90 guld og få 20% liv tilbage.',
         go: () => { run.gold += 90; run.restHeal(0.2); },
       },
     ];
     opts.forEach((o) => {
       const b = U.el('button', 'choice');
       b.type = 'button';
-      const ico = U.el('div', 'cico', o.icon);
+      const ico = U.el('div', 'cico');
+      iconInto(ico, o.icon, o.color);
       const txt = U.el('div', 'ctxt');
       txt.appendChild(U.el('b', null, o.title));
       txt.appendChild(U.el('span', null, o.text));
@@ -822,14 +891,14 @@ window.COC = window.COC || {};
       const mk = (id, label, color) => {
         const b = U.el('button', 'f-pill');
         b.type = 'button';
-        if (color) { const i = U.el('i'); i.style.background = color; b.appendChild(i); }
+        if (color) b.appendChild(Icons.el(R.ELEMENTS[id].icon, 15, color));
         b.appendChild(document.createTextNode(label));
         b.dataset.f = id;
         b.addEventListener('click', () => { UI.codexFilter = id; UI.renderCodex(); });
         f.appendChild(b);
       };
       mk('all', 'Alle');
-      R.ELEMENT_ORDER.forEach((e) => mk(e, R.ELEMENTS[e].name, R.ELEMENTS[e].color));
+      R.ELEMENT_ORDER.forEach((e) => mk(e, R.ELEMENTS[e].short, R.ELEMENTS[e].color));
     }
     $$('.f-pill', f).forEach((p) => p.classList.toggle('on', p.dataset.f === UI.codexFilter));
 
@@ -837,8 +906,9 @@ window.COC = window.COC || {};
     grid.innerHTML = '';
     R.list
       .filter((c) => UI.codexFilter === 'all' || c.element === UI.codexFilter)
-      .forEach((c) => {
+      .forEach((c, idx) => {
         const card = UI.card(c, { size: 100 });
+        card.style.animationDelay = (idx * 22) + 'ms';
         /* Playable critters are always legible — the Codex is a reference for
          * planning a team, and hiding your own cast from it helps nobody.
          * Wild critters and bosses stay silhouetted until you have met them. */
@@ -884,16 +954,12 @@ window.COC = window.COC || {};
     });
     pos.forEach((p) => {
       const el = R.ELEMENTS[p.id];
-      const g = ctx.createRadialGradient(p.x - 4, p.y - 5, 1, p.x, p.y, 15);
-      g.addColorStop(0, U.shade(el.color, 0.45));
-      g.addColorStop(1, U.shade(el.color, -0.25));
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 14, 0, U.TAU); ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+      const badge = Icons.get(el.icon, 30, el.color);
+      ctx.drawImage(badge, p.x - 15, p.y - 15, 30, 30);
       ctx.fillStyle = '#fff';
       ctx.font = '700 9px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(el.name, p.x, p.y + 27);
+      ctx.fillText(el.short, p.x, p.y + 27);
     });
   }
 

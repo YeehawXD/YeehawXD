@@ -239,7 +239,7 @@ window.COC = window.COC || {};
     }
     return {
       foes: place(ids), level, boss: false,
-      name: node.type === 'elite' ? 'Elite Pack' : 'Wild Critters',
+      name: node.type === 'elite' ? 'Eliteflok' : 'Vilde kritter',
     };
   }
 
@@ -419,7 +419,7 @@ window.COC = window.COC || {};
       const e = rng.pick(this.roster);
       out.push({
         kind: 'level', id: e.id, amount: elite ? 3 : 2,
-        title: R.get(e.id).name + ' +' + (elite ? 3 : 2) + ' levels',
+        title: R.get(e.id).name + ' +' + (elite ? 3 : 2) + ' niveauer',
       });
     }
     const relicPool = RELICS.filter((r) => !this.relics.includes(r.id));
@@ -427,7 +427,7 @@ window.COC = window.COC || {};
       const r = rng.pick(relicPool);
       out.push({ kind: 'relic', id: r.id, title: r.name, relic: r });
     }
-    out.push({ kind: 'gold', amount: (elite ? 120 : 60) + this.goldBonus(), title: 'Gold' });
+    out.push({ kind: 'gold', amount: (elite ? 120 : 60) + this.goldBonus(), title: 'Guld' });
 
     return rng.shuffle(out).slice(0, 3);
   };
@@ -464,7 +464,7 @@ window.COC = window.COC || {};
     rng.shuffle(this.roster.slice()).slice(0, 2).forEach((e) => {
       items.push({
         kind: 'level', id: e.id, amount: 3, cost: 70,
-        title: R.get(e.id).name + ' +3 levels',
+        title: R.get(e.id).name + ' +3 niveauer',
       });
     });
     const relicPool = RELICS.filter((r) => !this.relics.includes(r.id));
@@ -472,7 +472,7 @@ window.COC = window.COC || {};
       const r = rng.pick(relicPool);
       items.push({ kind: 'relic', id: r.id, relic: r, cost: 190, title: r.name });
     }
-    items.push({ kind: 'heal', amount: 0.5, cost: 50, title: 'Field rations' });
+    items.push({ kind: 'heal', amount: 0.5, cost: 50, title: 'Feltrationer' });
     return items;
   };
 
