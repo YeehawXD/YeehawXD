@@ -92,22 +92,22 @@ window.COC = window.COC || {};
   // ---------------------------------------------------------------- acts
   const ACTS = [
     {
-      n: 1, name: 'Hollow Meadow',
-      sky: ['#3b6f4a', '#2a4f39'], ground: '#5f9a52', accent: '#8fd06a',
-      pool: ['sludgeling', 'sludgeling', 'rockhound', 'wisp', 'quill'],
-      boss: 'thornmaw', rows: 7, baseLevel: 1, levelSpan: 6,
+      n: 1, name: 'Mumleskoven', region: 'skov',
+      sky: ['#2f5a3f', '#1d3b2c'], ground: '#4a7a46', accent: '#a8e06a',
+      pool: ['skovtyv', 'skovtyv', 'mosekone'],
+      boss: null, rows: 7, baseLevel: 1, levelSpan: 6,
     },
     {
-      n: 2, name: 'Cinder Reach',
-      sky: ['#6b3a2f', '#43231d'], ground: '#8a5340', accent: '#f0a04a',
-      pool: ['rockhound', 'wisp', 'cinder', 'quill', 'coral', 'sludgeling'],
-      boss: 'cinderhorn', rows: 8, baseLevel: 8, levelSpan: 7,
+      n: 2, name: 'Det Syngende Træsk', region: 'sump',
+      sky: ['#4a5230', '#2a3020'], ground: '#5f6b34', accent: '#c8e07a',
+      pool: ['mosekone', 'skovtyv', 'slaggehund'],
+      boss: null, rows: 8, baseLevel: 8, levelSpan: 7,
     },
     {
-      n: 3, name: 'The Long Dark',
-      sky: ['#2f2a52', '#191634'], ground: '#4a4270', accent: '#b07fe8',
-      pool: ['wisp', 'zephyr', 'geode', 'frost', 'volt', 'rockhound'],
-      boss: 'voidpaw', rows: 9, baseLevel: 16, levelSpan: 8,
+      n: 3, name: 'Emberhulen', region: 'ild',
+      sky: ['#5a2a22', '#331512'], ground: '#7a3f2c', accent: '#ff9a4a',
+      pool: ['slaggehund', 'mosekone', 'skovtyv'],
+      boss: 'gnavrod', rows: 9, baseLevel: 16, levelSpan: 8,
     },
   ];
 
@@ -201,6 +201,17 @@ window.COC = window.COC || {};
       return out;
     }
 
+    if (node.type === 'boss' && !act.boss) {
+      // No designed boss for this act — a heavier elite pack rather than a
+      // recoloured stand-in (§9.1).
+      const ids = [];
+      for (let i = 0; i < 5; i++) ids.push(rng.pick(act.pool));
+      return {
+        foes: place(ids).map(function (f) { return { id: f.id, level: level + 2, slot: f.slot }; }),
+        level: level + 2, boss: false, name: 'Overmagt',
+      };
+    }
+
     if (node.type === 'boss') {
       const boss = R.get(act.boss);
       const pool = act.pool.filter((id) => !R.get(id).boss);
@@ -218,7 +229,7 @@ window.COC = window.COC || {};
 
     const count = node.type === 'elite'
       ? rng.int(4, 5)
-      : U.clamp(3 + Math.floor(depth * 2.5), 3, 5);
+      : U.clamp(2 + Math.floor(depth * 3.2), 2, 5);
     const ids = [];
     for (let i = 0; i < count; i++) ids.push(rng.pick(act.pool));
     // keep at least one body up front so the back line is not immediately exposed
@@ -253,7 +264,7 @@ window.COC = window.COC || {};
     this.battlesWon = 0;
     this.startedAt = Date.now();
 
-    (opts.starters || ['bramble', 'pip', 'coral', 'nimbus']).forEach((id) => this.recruit(id));
+    (opts.starters || ['rodde', 'askeoje', 'glimt', 'sjatte']).forEach((id) => this.recruit(id));
     this.autoFormation();
     this.map = buildMap(this.rng, ACTS[0]);
   }
@@ -295,18 +306,28 @@ window.COC = window.COC || {};
       const ra = R.get(a.id).stats.range, rb = R.get(b.id).stats.range;
       return ra - rb;
     });
-    let fi = 0, bi = 0;
+    let fi = 0, bi = 0, placed = 0;
     sorted.forEach((entry) => {
+      if (placed >= Run.MAX_DEPLOY) return;
       const c = R.get(entry.id);
       const wantsFront = c.stats.range === 0;
-      if (wantsFront && fi < front.length) this.formation[front[fi++]] = entry.id;
-      else if (bi < back.length) this.formation[back[bi++]] = entry.id;
-      else if (fi < front.length) this.formation[front[fi++]] = entry.id;
+      let slot = null;
+      if (wantsFront && fi < front.length) slot = front[fi++];
+      else if (!wantsFront && bi < back.length) slot = back[bi++];
+      else if (fi < front.length) slot = front[fi++];
+      else if (bi < back.length) slot = back[bi++];
+      if (slot != null) { this.formation[slot] = entry.id; placed++; }
     });
   };
 
+  /* §5.1: the player fields up to five critters. The board has six slots, so
+   * which five and where is a real choice rather than a filled-in grid. */
+  Run.MAX_DEPLOY = 5;
   Run.prototype.deployed = function () {
     return this.formation.filter(Boolean).length;
+  };
+  Run.prototype.canDeployMore = function () {
+    return this.deployed() < Run.MAX_DEPLOY;
   };
 
   /** Entries for combat, carrying wounds forward from the previous fight. */
@@ -423,6 +444,7 @@ window.COC = window.COC || {};
 
   Run.prototype.autoFormationIfSpace = function (id) {
     if (this.formation.includes(id)) return;
+    if (!this.canDeployMore()) return;
     const empty = this.formation.indexOf(null);
     if (empty >= 0) this.formation[empty] = id;
   };

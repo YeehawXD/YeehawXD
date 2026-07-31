@@ -7,7 +7,7 @@ window.COC = window.COC || {};
 
   const U = NS.U;
   const $ = U.$, $$ = U.$$;
-  const Art = NS.Art;
+  const CA = NS.CritterArt;
   const R = NS.Roster;
   const C = NS.Combat;
   const RM = NS.RunMod;
@@ -33,7 +33,7 @@ window.COC = window.COC || {};
     battle: '⚔️', elite: '☠️', shop: '🛒', rest: '🔥', treasure: '🎁', boss: '👑',
   };
   const NODE_NAME = {
-    battle: 'Fight', elite: 'Elite', shop: 'Shop', rest: 'Camp', treasure: 'Cache', boss: 'Boss',
+    battle: 'Kamp', elite: 'Elite', shop: 'Bod', rest: 'Lejr', treasure: 'Fund', boss: 'Boss',
   };
 
   // ---------------------------------------------------------------- save
@@ -121,8 +121,8 @@ window.COC = window.COC || {};
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, size, size);
     ctx.save();
-    ctx.translate(size / 2, size * 0.90);
-    Art.critter(ctx, critter.art, { t: 0.6, scale: size * 0.60, moving: false, fx: false });
+    ctx.translate(size / 2, size * 0.88);
+    CA.draw(ctx, critter, { t: 0.6, scale: size * 0.56, st: { attack: 0, walk: 0, moving: false } });
     ctx.restore();
     UI._thumbs[key] = c;
     return c;
@@ -147,7 +147,12 @@ window.COC = window.COC || {};
     const dot = U.el('i', 'el');
     dot.style.background = R.ELEMENTS[critter.element].color;
     el.appendChild(dot);
-    if (opts.level) el.appendChild(U.el('span', 'lv', 'L' + opts.level));
+    if (opts.level) el.appendChild(U.el('span', 'lv', 'N' + opts.level));
+    const stars = U.el('span', 'stars');
+    const n = R.RARITY[critter.rarity].stars;
+    for (let i = 0; i < n; i++) stars.appendChild(U.el('i', null, '\u2605'));
+    stars.style.color = R.RARITY[critter.rarity].color;
+    el.appendChild(stars);
     const rd = U.el('i', 'role-dot');
     rd.style.background = R.ROLES[critter.role].color;
     el.appendChild(rd);
@@ -161,8 +166,8 @@ window.COC = window.COC || {};
     $('#btn-continue').style.display = UI.save.run ? '' : 'none';
     const s = UI.save;
     $('#title-runsub').textContent = s.runsWon
-      ? s.runsWon + ' run' + (s.runsWon === 1 ? '' : 's') + ' completed'
-      : 'Three acts · fifteen critters';
+      ? s.runsWon + (s.runsWon === 1 ? ' rejse' : ' rejser') + ' fuldført'
+      : 'Tre regioner · syv kritter';
 
     const cv = $('#title-art');
     const ctx = cv.getContext('2d');
@@ -170,7 +175,7 @@ window.COC = window.COC || {};
     const w = 420, h = 300;
     cv.width = w * dpr; cv.height = h * dpr;
     cancelAnimationFrame(titleRAF);
-    const cast = ['bramble', 'pip', 'cinder', 'nimbus', 'volt'].map((id) => R.get(id));
+    const cast = ['grumle', 'rodde', 'askeoje', 'sjatte', 'glimt'].map((id) => R.get(id));
     const t0 = performance.now();
     (function frame(now) {
       if (UI.screen !== 'title') return;
@@ -188,10 +193,12 @@ window.COC = window.COC || {};
         const y = 250 + Math.sin(t * 1.4 + i) * 4;
         ctx.save();
         ctx.translate(x, y);
-        Art.critter(ctx, c.art, {
-          t: t + i * 1.3, scale: 78 - Math.abs(order - 2) * 6,
-          walk: t * 3.4 + i, moving: false,
-          attack: (Math.sin(t * 0.7 + i * 2.1) > 0.96) ? 0.5 : 0,
+        CA.draw(ctx, c, {
+          t: t + i * 1.3, scale: 74 - Math.abs(order - 2) * 5,
+          st: {
+            walk: t * 3.4 + i, moving: false,
+            attack: (Math.sin(t * 0.7 + i * 2.1) > 0.96) ? 0.5 : 0,
+          },
         });
         ctx.restore();
       });
@@ -212,7 +219,7 @@ window.COC = window.COC || {};
 
   UI.continueRun = function () {
     const r = UI.restoreRun();
-    if (!r) { UI.toast('No run to continue'); return; }
+    if (!r) { UI.toast('Ingen rejse at fortsætte'); return; }
     UI.run = r;
     UI.stack = ['title'];
     UI.show('map', { replace: true });
@@ -224,7 +231,7 @@ window.COC = window.COC || {};
     if (!run) { UI.show('title', { replace: true }); return; }
     const act = run.act0();
     $('#map-act').textContent = act.name;
-    $('#map-sub').textContent = 'Act ' + act.n + ' · Team level ' + run.teamLevel;
+    $('#map-sub').textContent = 'Region ' + act.n + ' · Holdniveau ' + run.teamLevel;
     $('#map-gold').textContent = run.gold;
 
     // relics
@@ -404,7 +411,7 @@ window.COC = window.COC || {};
     const bonds = activeBonds(run);
     if (!bonds.length) {
       note.className = 'bond-note empty';
-      note.textContent = 'No bonds active. Try moving critters next to their preferred allies.';
+      note.textContent = 'Ingen bånd aktive. Prøv at flytte kritterne hen ved siden af deres foretrukne allierede.';
     } else {
       note.className = 'bond-note';
       note.innerHTML = bonds.map((b) => '<b>' + b.name + '</b> ' + b.text).join('<br>');
@@ -412,10 +419,10 @@ window.COC = window.COC || {};
 
     const enc = UI.encounter;
     $('#team-sub').textContent = enc
-      ? (enc.boss ? 'Boss: ' + enc.name : enc.name + ' · Lv ' + enc.level)
-      : 'Tap a critter, then tap a slot';
+      ? (enc.boss ? 'Boss: ' + enc.name : enc.name + ' · Niveau ' + enc.level)
+      : 'Tryk på en kritter, tryk så på en plads';
     const fight = $('#btn-fight');
-    fight.textContent = enc ? 'Fight' : 'Back to map';
+    fight.textContent = enc ? 'Kæmp' : 'Tilbage til kortet';
     fight.disabled = run.deployed() === 0;
   };
 
@@ -464,6 +471,12 @@ window.COC = window.COC || {};
     const current = run.formation[slot];
     if (UI.pick) {
       const from = run.formation.indexOf(UI.pick);
+      // Adding a critter that is not already on the board must respect the cap.
+      if (from < 0 && !current && !run.canDeployMore()) {
+        UI.toast('Du kan højst opstille ' + RM.Run.MAX_DEPLOY + ' kritter');
+        Audio.play('deny');
+        return;
+      }
       if (from >= 0) run.formation[from] = current || null;   // swap
       run.formation[slot] = UI.pick;
       UI.pick = null;
@@ -498,7 +511,7 @@ window.COC = window.COC || {};
     enc.foes.forEach((f) => { UI.save.seen[f.id] = true; });
 
     $('#battle-foe').textContent = enc.name;
-    $('#battle-lvl').textContent = 'Lv ' + enc.level + (enc.boss ? ' · Boss' : '');
+    $('#battle-lvl').textContent = 'Niveau ' + enc.level + (enc.boss ? ' · Boss' : '');
     $('#btn-auto').classList.toggle('on', !!UI.save.settings.autoUlt);
     $('#btn-speed').textContent = UI.speed + '×';
 
@@ -624,8 +637,8 @@ window.COC = window.COC || {};
   UI.showReward = function (node) {
     const run = UI.run;
     const choices = run.rollRewards(node);
-    $('#reward-title').textContent = node.type === 'boss' ? 'Act Cleared!' : 'Victory';
-    $('#reward-sub').textContent = '+' + UI._lastGold + ' gold · choose one reward';
+    $('#reward-title').textContent = node.type === 'boss' ? 'Region klaret!' : 'Sejr';
+    $('#reward-sub').textContent = '+' + UI._lastGold + ' guld · vælg én belønning';
     const wrap = $('#reward-choices');
     wrap.innerHTML = '';
     choices.forEach((rw) => wrap.appendChild(rewardChoice(rw, () => {
@@ -646,22 +659,22 @@ window.COC = window.COC || {};
     const txt = U.el('div', 'ctxt');
     if (rw.kind === 'recruit') {
       ico.appendChild(cloneThumb(rw.critter, 52));
-      txt.appendChild(U.el('b', null, 'Recruit ' + rw.critter.name));
+      txt.appendChild(U.el('b', null, 'Hverv ' + rw.critter.name));
       txt.appendChild(U.el('span', null,
         R.ELEMENTS[rw.critter.element].name + ' ' + R.ROLES[rw.critter.role].name +
         ' · ' + rw.critter.title));
     } else if (rw.kind === 'level') {
       ico.appendChild(cloneThumb(R.get(rw.id), 52));
       txt.appendChild(U.el('b', null, rw.title));
-      txt.appendChild(U.el('span', null, 'More health, attack and defence.'));
+      txt.appendChild(U.el('span', null, 'Mere liv, angreb og forsvar.'));
     } else if (rw.kind === 'relic') {
       ico.textContent = relicGlyph(rw.relic.icon);
       txt.appendChild(U.el('b', null, rw.relic.name));
       txt.appendChild(U.el('span', null, rw.relic.text));
     } else {
       ico.textContent = '💰';
-      txt.appendChild(U.el('b', null, '+' + rw.amount + ' gold'));
-      txt.appendChild(U.el('span', null, 'Spend it at the next cart.'));
+      txt.appendChild(U.el('b', null, '+' + rw.amount + ' guld'));
+      txt.appendChild(U.el('span', null, 'Brug det ved næste bod.'));
     }
     b.appendChild(ico); b.appendChild(txt);
     if (rw.cost != null) {
@@ -695,7 +708,7 @@ window.COC = window.COC || {};
       const b = rewardChoice(item.kind === 'heal'
         ? { kind: 'gold', amount: 0, title: item.title, cost: item.cost }
         : item, () => {
-        if (run.gold < item.cost) { UI.toast('Not enough gold'); Audio.play('deny'); return; }
+        if (run.gold < item.cost) { UI.toast('Ikke guld nok'); Audio.play('deny'); return; }
         run.gold -= item.cost;
         if (item.kind === 'heal') run.restHeal(item.amount);
         else run.takeReward(item);
@@ -707,7 +720,7 @@ window.COC = window.COC || {};
       if (item.kind === 'heal') {
         b.querySelector('.cico').textContent = '🍲';
         b.querySelector('.ctxt b').textContent = item.title;
-        b.querySelector('.ctxt span').textContent = 'Restore 50% health to the whole team.';
+        b.querySelector('.ctxt span').textContent = 'Giv hele holdet 50% liv tilbage.';
       }
       const cost = b.querySelector('.cost');
       if (cost) cost.textContent = item.cost + 'g';
@@ -715,7 +728,7 @@ window.COC = window.COC || {};
       grid.appendChild(b);
     });
     if (!grid.children.length) {
-      const p = U.el('p', 'panel-sub', 'The cart is empty. Safe travels.');
+      const p = U.el('p', 'panel-sub', 'Boden er tom. God rejse.');
       grid.appendChild(p);
     }
     $('#shop-leave').onclick = () => { UI._shopItems = null; UI.afterNode(); };
@@ -728,19 +741,19 @@ window.COC = window.COC || {};
     wrap.innerHTML = '';
     const opts = [
       {
-        icon: '🔥', title: 'Rest', text: 'Restore 60% health to every critter.',
+        icon: '🔥', title: 'Hvil', text: 'Giv hver kritter 60% liv tilbage.',
         go: () => run.restHeal(0.6),
       },
       {
-        icon: '📖', title: 'Train', text: 'Give one critter +3 levels.',
+        icon: '📖', title: 'Træn', text: 'Giv én kritter +3 niveauer.',
         go: () => {
           const e = run.rng.pick(run.roster);
           e.bonus = (e.bonus || 0) + 3;
-          UI.toast(R.get(e.id).name + ' reached level ' + run.levelOf(e));
+          UI.toast(R.get(e.id).name + ' nåede niveau ' + run.levelOf(e));
         },
       },
       {
-        icon: '🍀', title: 'Forage', text: 'Find 90 gold and restore 20% health.',
+        icon: '🍀', title: 'Sank', text: 'Find 90 guld og få 20% liv tilbage.',
         go: () => { run.gold += 90; run.restHeal(0.2); },
       },
     ];
@@ -760,8 +773,8 @@ window.COC = window.COC || {};
   UI.openTreasure = function () {
     const run = UI.run;
     const choices = run.rollRewards({ type: 'treasure' });
-    $('#reward-title').textContent = 'Cache';
-    $('#reward-sub').textContent = 'Something was left here. Take one.';
+    $('#reward-title').textContent = 'Fund';
+    $('#reward-sub').textContent = 'Nogen efterlod noget her. Tag én ting.';
     const wrap = $('#reward-choices');
     wrap.innerHTML = '';
     choices.forEach((rw) => wrap.appendChild(rewardChoice(rw, () => {
@@ -777,11 +790,11 @@ window.COC = window.COC || {};
   // ---------------------------------------------------------------- run end
   UI.showRunEnd = function (won) {
     const run = UI.run;
-    $('#end-title').textContent = won ? 'Run Complete' : 'Run Over';
+    $('#end-title').textContent = won ? 'Rejsen fuldført' : 'Rejsen er slut';
     $('#end-title').className = won ? 'win' : 'lose';
     $('#end-sub').textContent = won
-      ? 'Voidpaw is unmade. The meadow is quiet again.'
-      : 'Your team could not hold. The meadow keeps what it takes.';
+      ? 'Gnavrod er fældet. Der er stille i Mumleskoven igen.'
+      : 'Holdet kunne ikke holde linjen. De Skæve Lande beholder, hvad de tager.';
     const ul = $('#end-stats');
     ul.innerHTML = '';
     const row = (k, v) => {
@@ -790,11 +803,11 @@ window.COC = window.COC || {};
       li.appendChild(U.el('b', null, String(v)));
       ul.appendChild(li);
     };
-    row('Act reached', RM.ACTS[Math.min(run.act, RM.ACTS.length - 1)].name);
-    row('Battles won', run.battlesWon);
-    row('Critters recruited', run.roster.length);
-    row('Relics found', run.relics.length);
-    row('Gold left', run.gold);
+    row('Nåede til', RM.ACTS[Math.min(run.act, RM.ACTS.length - 1)].name);
+    row('Kampe vundet', run.battlesWon);
+    row('Kritter hvervet', run.roster.length);
+    row('Relikvier fundet', run.relics.length);
+    row('Guld tilbage', run.gold);
     UI.persist();
     UI.overlay('runend');
     Audio.play(won ? 'win' : 'lose');
@@ -815,7 +828,7 @@ window.COC = window.COC || {};
         b.addEventListener('click', () => { UI.codexFilter = id; UI.renderCodex(); });
         f.appendChild(b);
       };
-      mk('all', 'All');
+      mk('all', 'Alle');
       R.ELEMENT_ORDER.forEach((e) => mk(e, R.ELEMENTS[e].name, R.ELEMENTS[e].color));
     }
     $$('.f-pill', f).forEach((p) => p.classList.toggle('on', p.dataset.f === UI.codexFilter));
@@ -831,7 +844,7 @@ window.COC = window.COC || {};
          * Wild critters and bosses stay silhouetted until you have met them. */
         if (c.enemyOnly && !UI.save.seen[c.id]) {
           card.style.filter = 'grayscale(1) brightness(.45)';
-          card.title = 'Not yet encountered';
+          card.title = 'Ikke mødt endnu';
         }
         card.addEventListener('click', () => UI.showDetail(c));
         grid.appendChild(card);
@@ -904,16 +917,16 @@ window.COC = window.COC || {};
     const rt = U.el('span', 'tag', R.ROLES[c.role].name);
     rt.style.background = U.rgba(R.ROLES[c.role].color, 0.22);
     tags.appendChild(rt);
-    const gt = U.el('span', 'tag', 'Grade ' + c.grade);
+    const gt = U.el('span', 'tag', R.RARITY[c.rarity].name);
     gt.style.color = R.GRADE[c.grade].color;
     tags.appendChild(gt);
-    if (c.stats.range > 0) tags.appendChild(U.el('span', 'tag', 'Ranged'));
-    else tags.appendChild(U.el('span', 'tag', 'Melee'));
+    tags.appendChild(U.el('span', 'tag', c.stats.range > 0 ? 'Afstand' : 'Nærkamp'));
     idb.appendChild(tags);
     head.appendChild(idb);
     box.appendChild(head);
 
-    box.appendChild(U.el('p', 'blurb', '“' + c.blurb + '”'));
+    if (c.person) box.appendChild(U.el('p', 'person', c.person));
+    box.appendChild(U.el('p', 'blurb', '\u201C' + c.blurb + '\u201D'));
 
     const run = UI.run;
     const owned = run && run.owned(c.id);
@@ -925,10 +938,10 @@ window.COC = window.COC || {};
       d.appendChild(U.el('b', null, String(val)));
       sb.appendChild(d);
     };
-    stat('Health', st.hp);
-    stat('Attack', st.atk);
-    stat('Defence', st.def);
-    stat('Speed', st.interval.toFixed(2) + 's');
+    stat('Liv', st.hp);
+    stat('Angreb', st.atk);
+    stat('Forsvar', st.def);
+    stat('Hastighed', st.interval.toFixed(2) + 's');
     box.appendChild(sb);
 
     const ability = (kind, cls, name, text) => {
@@ -940,11 +953,11 @@ window.COC = window.COC || {};
       a.appendChild(U.el('p', null, text));
       box.appendChild(a);
     };
-    if (c.passive) ability('Passive', 'kind-passive', c.passive.name, c.passive.text);
+    if (c.passive) ability('Passiv', 'kind-passive', c.passive.name, c.passive.text);
     if (c.ult) ability('Ultimate', 'kind-ult', c.ult.name, c.ult.text);
-    if (c.bond) ability('Bond', 'kind-bond', 'Standing together', c.bond.text);
+    if (c.bond) ability('Bånd', 'kind-bond', 'Side om side', c.bond.text);
 
-    const close = U.el('button', 'btn btn-quiet', 'Close');
+    const close = U.el('button', 'btn btn-quiet', 'Luk');
     close.style.width = '100%';
     close.addEventListener('click', () => UI.hideOverlay('critter'));
     box.appendChild(close);
@@ -1000,9 +1013,9 @@ window.COC = window.COC || {};
       return sw;
     };
 
-    row('Sound effects', 'Hits, ultimates, victory', slider(() => s.sfx, (v) => { s.sfx = v; Audio.setSfxVolume(v); }));
-    row('Music', 'Battle loop', slider(() => s.music, (v) => { s.music = v; Audio.setMusicVolume(v); }));
-    row('Auto ultimates', 'Fire ultimates the moment they charge', toggle(() => s.autoUlt, (v) => { s.autoUlt = v; }));
+    row('Lydeffekter', 'Slag, ultimates, sejr', slider(() => s.sfx, (v) => { s.sfx = v; Audio.setSfxVolume(v); }));
+    row('Musik', 'Kampmelodi', slider(() => s.music, (v) => { s.music = v; Audio.setMusicVolume(v); }));
+    row('Auto-ultimates', 'Udløs ultimates straks de er ladet op', toggle(() => s.autoUlt, (v) => { s.autoUlt = v; }));
 
     const sp = U.el('div', 'btn-row');
     [1, 2, 3].forEach((v) => {
@@ -1010,9 +1023,9 @@ window.COC = window.COC || {};
       b.addEventListener('click', () => { UI.speed = v; s.speed = v; UI.persist(); UI.renderSettings(); });
       sp.appendChild(b);
     });
-    row('Battle speed', 'Applies immediately', sp);
+    row('Kamphastighed', 'Virker med det samme', sp);
 
-    const wipe = U.el('button', 'btn btn-quiet', 'Erase all progress');
+    const wipe = U.el('button', 'btn btn-quiet', 'Slet al fremgang');
     wipe.style.marginTop = '18px';
     wipe.style.width = '100%';
     wipe.addEventListener('click', () => {
@@ -1020,11 +1033,11 @@ window.COC = window.COC || {};
         U.storage.clear();
         UI.loadSave();
         UI.run = null;
-        UI.toast('Progress erased');
+        UI.toast('Fremgang slettet');
         UI.show('title', { replace: true });
       } else {
         wipe.dataset.armed = '1';
-        wipe.textContent = 'Tap again to confirm';
+        wipe.textContent = 'Tryk igen for at bekræfte';
       }
     });
     body.appendChild(wipe);

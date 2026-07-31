@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="da">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#141024">
-<meta name="description" content="Critter Clash — a tactical auto-battler roguelite. Build a team of elemental critters, place them on a 3x2 board, and fight your way through three acts.">
-<title>Critter Clash</title>
+<meta name="description" content="Fantasy Kritter — saml, opgrader og kæmp med skæve væsner fra De Skæve Lande. Taktisk auto-battler med formation, typer og ultimates.">
+<title>Fantasy Kritter</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23241b42'/%3E%3Cpath d='M17 24l-3-11 11 6z' fill='%237fce5a'/%3E%3Cpath d='M47 24l3-11-11 6z' fill='%237fce5a'/%3E%3Ccircle cx='32' cy='36' r='17' fill='%237fce5a'/%3E%3Cellipse cx='25' cy='34' rx='5' ry='6' fill='%23241b42'/%3E%3Cellipse cx='39' cy='34' rx='5' ry='6' fill='%23241b42'/%3E%3Ccircle cx='23.4' cy='31.8' r='2' fill='%23fff'/%3E%3Ccircle cx='37.4' cy='31.8' r='2' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -16,31 +16,31 @@
   <section class="screen" id="s-title">
     <div class="title-wrap">
       <canvas id="title-art" width="420" height="300" aria-hidden="true"></canvas>
-      <h1 class="logo"><span class="logo-a">Critter</span><span class="logo-b">Clash</span></h1>
-      <p class="logo-sub">A tactical auto-battler roguelite</p>
+      <h1 class="logo"><span class="logo-a">Fantasy</span><span class="logo-b">Kritter</span></h1>
+      <p class="logo-sub">Saml holdet. Vælg opstillingen. Vind kampen.</p>
     </div>
     <div class="title-actions">
       <button class="btn btn-primary btn-lg" data-go="newrun">
-        <span class="btn-label">Begin a Run</span>
-        <span class="btn-sub" id="title-runsub">Three acts &middot; fifteen critters</span>
+        <span class="btn-label">Start rejsen</span>
+        <span class="btn-sub" id="title-runsub">Tre regioner &middot; syv kritter</span>
       </button>
-      <button class="btn" data-go="continue" id="btn-continue">Continue Run</button>
+      <button class="btn" data-go="continue" id="btn-continue">Fortsæt rejsen</button>
       <div class="btn-row">
-        <button class="btn btn-quiet" data-go="codex">Codex</button>
-        <button class="btn btn-quiet" data-go="howto">How to Play</button>
-        <button class="btn btn-quiet" data-go="settings">Settings</button>
+        <button class="btn btn-quiet" data-go="codex">Kritter</button>
+        <button class="btn btn-quiet" data-go="howto">Sådan spiller du</button>
+        <button class="btn btn-quiet" data-go="settings">Indstillinger</button>
       </div>
     </div>
-    <p class="title-foot">No timers. No purchases. Every critter is earned by playing.</p>
+    <p class="title-foot">Ingen timere. Ingen køb. Hver kritter tjenes ved at spille.</p>
   </section>
 
   <!-- ============================================ MAP -->
   <section class="screen" id="s-map">
     <header class="bar">
-      <button class="icon-btn" data-go="title" title="Leave run">&#10005;</button>
+      <button class="icon-btn" data-go="title" title="Forlad rejsen">&#10005;</button>
       <div class="bar-title">
-        <b id="map-act">Hollow Meadow</b>
-        <span id="map-sub">Act 1</span>
+        <b id="map-act">Mumleskoven</b>
+        <span id="map-sub">Region 1</span>
       </div>
       <div class="stat-chips">
         <span class="chip chip-gold"><i class="ico-coin"></i><b id="map-gold">0</b></span>
@@ -49,7 +49,7 @@
     <div class="relic-strip" id="relic-strip"></div>
     <div class="map-scroll" id="map-scroll"><div class="map-inner" id="map-inner"></div></div>
     <footer class="map-foot">
-      <button class="btn btn-quiet btn-sm" data-go="team">Team &amp; Formation</button>
+      <button class="btn btn-quiet btn-sm" data-go="team">Hold &amp; opstilling</button>
       <div class="team-mini" id="team-mini"></div>
     </footer>
   </section>
@@ -58,30 +58,30 @@
   <section class="screen" id="s-team">
     <header class="bar">
       <button class="icon-btn" data-back="1">&#8592;</button>
-      <div class="bar-title"><b>Formation</b><span id="team-sub">Tap a critter, then tap a slot</span></div>
-      <button class="icon-btn" id="btn-autoform" title="Auto arrange">&#8635;</button>
+      <div class="bar-title"><b>Opstilling</b><span id="team-sub">Tryk på en kritter, tryk så på en plads</span></div>
+      <button class="icon-btn" id="btn-autoform" title="Stil op automatisk">&#8635;</button>
     </header>
 
     <div class="board-wrap">
-      <div class="board-label">Back row <span>protected &middot; ranged</span></div>
+      <div class="board-label">Bagerste række <span>beskyttet &middot; afstand</span></div>
       <div class="board" id="board"></div>
-      <div class="board-label front">Front row <span>takes the hits</span></div>
+      <div class="board-label front">Forreste række <span>tager slagene</span></div>
     </div>
 
     <div class="bond-note" id="bond-note"></div>
 
-    <div class="section-head">Bench</div>
+    <div class="section-head">Bænk</div>
     <div class="bench" id="bench"></div>
 
     <div class="team-actions">
-      <button class="btn btn-primary" id="btn-fight">Continue</button>
+      <button class="btn btn-primary" id="btn-fight">Videre</button>
     </div>
   </section>
 
   <!-- ============================================ BATTLE -->
   <section class="screen" id="s-battle">
     <header class="bar bar-float">
-      <div class="foe-info"><b id="battle-foe">Wild Critters</b><span id="battle-lvl">Lv 3</span></div>
+      <div class="foe-info"><b id="battle-foe">Vilde kritter</b><span id="battle-lvl">Niveau 3</span></div>
       <div class="bar-tools">
         <button class="pill-btn" id="btn-speed">1&times;</button>
         <button class="pill-btn" id="btn-auto">Auto</button>
@@ -94,28 +94,28 @@
   <!-- ============================================ REWARD -->
   <section class="screen overlay" id="s-reward">
     <div class="panel">
-      <h2 id="reward-title">Victory</h2>
-      <p class="panel-sub" id="reward-sub">Choose one</p>
+      <h2 id="reward-title">Sejr</h2>
+      <p class="panel-sub" id="reward-sub">Vælg én</p>
       <div class="choices" id="reward-choices"></div>
-      <button class="btn btn-quiet btn-sm" id="reward-skip">Skip</button>
+      <button class="btn btn-quiet btn-sm" id="reward-skip">Spring over</button>
     </div>
   </section>
 
   <!-- ============================================ SHOP -->
   <section class="screen" id="s-shop">
     <header class="bar">
-      <div class="bar-title"><b>Wandering Cart</b><span>Spend it before the boss does</span></div>
+      <div class="bar-title"><b>Omvandrende bod</b><span>Brug guldet, før bossen gør</span></div>
       <span class="chip chip-gold"><i class="ico-coin"></i><b id="shop-gold">0</b></span>
     </header>
     <div class="shop-grid" id="shop-grid"></div>
-    <div class="team-actions"><button class="btn btn-primary" id="shop-leave">Move on</button></div>
+    <div class="team-actions"><button class="btn btn-primary" id="shop-leave">Videre</button></div>
   </section>
 
   <!-- ============================================ REST -->
   <section class="screen" id="s-rest">
     <div class="panel">
-      <h2>Campfire</h2>
-      <p class="panel-sub">A quiet moment before the next fight.</p>
+      <h2>Lejrbål</h2>
+      <p class="panel-sub">Et stille øjeblik før næste kamp.</p>
       <div class="choices" id="rest-choices"></div>
     </div>
   </section>
@@ -123,12 +123,12 @@
   <!-- ============================================ RUN END -->
   <section class="screen overlay" id="s-runend">
     <div class="panel">
-      <h2 id="end-title">Run Over</h2>
+      <h2 id="end-title">Rejsen er slut</h2>
       <p class="panel-sub" id="end-sub"></p>
       <ul class="kv-list" id="end-stats"></ul>
       <div class="btn-row">
-        <button class="btn btn-primary" data-go="newrun">New Run</button>
-        <button class="btn btn-quiet" data-go="title">Title</button>
+        <button class="btn btn-primary" data-go="newrun">Ny rejse</button>
+        <button class="btn btn-quiet" data-go="title">Forsiden</button>
       </div>
     </div>
   </section>
@@ -137,7 +137,7 @@
   <section class="screen" id="s-codex">
     <header class="bar">
       <button class="icon-btn" data-back="1">&#8592;</button>
-      <div class="bar-title"><b>Codex</b><span>Every critter in the meadow</span></div>
+      <div class="bar-title"><b>Kritter</b><span>Alle væsner i De Skæve Lande</span></div>
       <div class="spacer"></div>
     </header>
     <div class="wheel-wrap"><canvas id="wheel" width="300" height="150"></canvas></div>
@@ -154,37 +154,38 @@
   <section class="screen" id="s-howto">
     <header class="bar">
       <button class="icon-btn" data-back="1">&#8592;</button>
-      <div class="bar-title"><b>How to Play</b></div>
+      <div class="bar-title"><b>Sådan spiller du</b></div>
       <div class="spacer"></div>
     </header>
     <div class="prose">
-      <h3>The board</h3>
-      <p>Each side fights from a <b>3&times;2 board</b>. The <b>front row</b> takes every melee hit;
-        the <b>back row</b> is untouchable until the front row falls. Put your Guardians where the
-        damage lands and your Marksmen where it does not.</p>
+      <h3>Brættet</h3>
+      <p>Hver side kæmper fra et <b>3&times;2-bræt</b>. <b>Forreste række</b> tager alle nærkampsslag;
+        <b>bagerste række</b> kan ikke rammes, før fronten falder. Stil dine Tanks der, hvor slagene
+        lander, og dine Skadere der, hvor de ikke gør. Du kan opstille <b>op til fem</b> kritter.</p>
 
-      <h3>Elements</h3>
-      <p>Five elements form one loop, each strong against the next:</p>
-      <p class="cycle">Tide &rarr; Ember &rarr; Bloom &rarr; Stone &rarr; Spark &rarr; Tide</p>
-      <p>Attacking with the advantage deals <b>1.5&times;</b> damage <i>and</i> builds ultimate energy
-        50% faster. Attacking into a resistance deals only 0.7&times;. Matching elements is about
-        tempo as much as damage.</p>
+      <h3>Typer</h3>
+      <p>De fem regioner er samtidig spillets typer. Hver slår den næste:</p>
+      <p class="cycle">Sump &rarr; Skov &rarr; Sten &rarr; Ild &rarr; Frost &rarr; Sump</p>
+      <p>Angriber du med fordel, gør du <b>1,5&times;</b> skade <i>og</i> oplader din ultimate
+        50% hurtigere. Angriber du mod din svaghed, gør du kun 0,7&times;. Typematch handler
+        lige så meget om tempo som om skade.</p>
 
-      <h3>Bonds</h3>
-      <p>Every critter has a <b>Bond</b> — a bonus for standing next to the right ally, or for
-        being in the right row. Bonds are checked against orthogonal neighbours, so moving one
-        critter can change three others. This is where formations are won.</p>
+      <h3>Bånd</h3>
+      <p>Hver kritter har et <b>bånd</b> — en bonus for at stå ved siden af den rigtige allierede,
+        eller for at stå i den rigtige række. Bånd tjekkes mod naboer, så at flytte én kritter kan
+        ændre tre andre. Det er her, opstillinger vindes.</p>
 
       <h3>Ultimates</h3>
-      <p>Critters gain energy by dealing and taking damage. At full energy their portrait glows —
-        <b>tap it</b> to fire. Holding an ultimate until the right moment is the main decision you
-        make during a fight. Turn on <b>Auto</b> if you would rather watch.</p>
+      <p>Kritter oplader energi ved at give og tage skade. Når baren er fuld, lyser portrættet —
+        <b>tryk på det</b> for at udløse evnen. At holde en helbredelse ét sekund længere er den
+        vigtigste beslutning, du træffer under kampen. Slå <b>Auto</b> til, hvis du hellere vil se på.</p>
 
-      <h3>The run</h3>
-      <p>Three acts, each a branching map. Health carries between battles, so a cheap win matters.
-        Rest heals, shops sell, elites hurt but pay well. Lose your whole team and the run ends.</p>
+      <h3>Rejsen</h3>
+      <p>Tre regioner, hver med et forgrenet kort. Liv følger med fra kamp til kamp, så en billig
+        sejr er mere værd end en flot en. Lejrbål helbreder, boder sælger, eliter gør ondt men
+        betaler godt. Mister du hele holdet, er rejsen slut.</p>
 
-      <h3>Roles</h3>
+      <h3>Roller</h3>
       <ul id="howto-roles"></ul>
     </div>
   </section>
@@ -193,7 +194,7 @@
   <section class="screen" id="s-settings">
     <header class="bar">
       <button class="icon-btn" data-back="1">&#8592;</button>
-      <div class="bar-title"><b>Settings</b></div>
+      <div class="bar-title"><b>Indstillinger</b></div>
       <div class="spacer"></div>
     </header>
     <div class="settings" id="settings-body"></div>
@@ -204,7 +205,8 @@
 
 <script src="js/util.js"></script>
 <script src="js/audio.js"></script>
-<script src="js/art.js"></script>
+<script src="js/draw.js"></script>
+<script src="js/critterart.js"></script>
 <script src="js/roster.js"></script>
 <script src="js/combat.js"></script>
 <script src="js/run.js"></script>

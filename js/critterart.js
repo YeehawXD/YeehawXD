@@ -782,5 +782,304 @@ window.COC = window.COC || {};
     ctx.restore();
   };
 
+  // ================================================================= SKOVTYV
+  /* §9.1 example made real: not a dark Rodde, but its own creature — lanky and
+   * hunched, with absurdly long fingers and a bulging sack of stolen leaves. */
+  A.skovtyv = function (ctx, self, t, st) {
+    const cloak = D.ramp('#3f5236');
+    const skin = D.ramp('#8a9a6a');
+    const sway = Math.sin(t * 1.6) * 0.02;
+    const grab = st.attack ? Math.sin(st.attack * Math.PI) : 0;
+
+    D.contact(ctx, self, 0.34, 0.32);
+    ctx.save();
+
+    // bulging sack slung over one shoulder
+    ctx.save();
+    ctx.translate(-0.30, -0.62 + sway);
+    ctx.rotate(-0.16);
+    D.blob(ctx, 0, 0, 0.24, 0.27, 0.07, 4);
+    D.body(ctx, self, 'sack', [-0.24, -0.27, 0.24, 0.27], D.ramp('#7a6a48'));
+    // leaves poking out of the neck of the sack
+    [-1, 0, 1].forEach(function (i) {
+      ctx.save();
+      ctx.translate(i * 0.08, -0.24);
+      ctx.rotate(i * 0.5);
+      D.ell(ctx, 0, -0.06, 0.05, 0.10);
+      D.flat(ctx, '#6f9f42', W.hair * 1.4, '#3f5f28');
+      ctx.restore();
+    });
+    ctx.restore();
+
+    // thin legs
+    [-0.11, 0.12].forEach(function (lx, i) {
+      const sw = st.moving ? Math.sin(st.walk + i * Math.PI) * 0.04 : 0;
+      D.taper(ctx, lx, -0.40, lx + sw, -0.015, 0.038, 0.026);
+      D.body(ctx, self, 'leg' + i, [lx - 0.05, -0.42, lx + 0.05, 0], skin, W.form);
+    });
+
+    // narrow hunched torso under a ragged cloak
+    const bodyPath = function () {
+      ctx.beginPath();
+      ctx.moveTo(-0.20, -0.40);
+      ctx.quadraticCurveTo(-0.26, -0.74, -0.10, -0.86);
+      ctx.quadraticCurveTo(0.14, -0.90, 0.20, -0.68);
+      ctx.quadraticCurveTo(0.24, -0.48, 0.18, -0.38);
+      ctx.closePath();
+    };
+    bodyPath();
+    D.body(ctx, self, 'body', [-0.26, -0.9, 0.24, -0.38], cloak);
+    D.MAT.leaf(ctx, self, bodyPath, cloak, 6);
+
+    // the long thieving fingers — the whole point of the silhouette
+    [[-0.24, 1], [0.24, -1]].forEach(function (a, i) {
+      const reach = i === 1 ? grab * 0.16 : 0;
+      ctx.save();
+      ctx.translate(a[0] + reach, -0.58 + sway);
+      ctx.rotate(a[1] * (0.3 + grab * 0.4));
+      D.taper(ctx, 0, 0, a[1] * -0.06, 0.22, 0.032, 0.022);
+      D.body(ctx, self, 'arm' + i, [-0.08, 0, 0.08, 0.22], skin, W.form);
+      for (let f = -1; f <= 1; f++) {
+        ctx.beginPath();
+        ctx.moveTo(a[1] * -0.06, 0.22);
+        ctx.quadraticCurveTo(a[1] * -0.10 + f * 0.04, 0.32, a[1] * -0.06 + f * 0.055, 0.44);
+        D.stroke(ctx, skin.line, W.detail * 1.5);
+        D.stroke(ctx, skin.mid, W.detail);
+      }
+      ctx.restore();
+    });
+
+    // hood with two narrow eyes and nothing else
+    ctx.save();
+    ctx.translate(0.02, -0.92 + sway);
+    ctx.beginPath();
+    ctx.moveTo(-0.22, 0.10);
+    ctx.quadraticCurveTo(-0.24, -0.22, 0, -0.26);
+    ctx.quadraticCurveTo(0.24, -0.22, 0.22, 0.10);
+    ctx.quadraticCurveTo(0, 0.02, -0.22, 0.10);
+    ctx.closePath();
+    D.body(ctx, self, 'hood', [-0.24, -0.26, 0.24, 0.1], cloak);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(-0.18, 0.06); ctx.quadraticCurveTo(0, -0.04, 0.18, 0.06);
+    ctx.quadraticCurveTo(0, 0.10, -0.18, 0.06); ctx.closePath();
+    D.flat(ctx, '#171f14', W.detail, '#0d130b');
+    ctx.restore();
+    [-1, 1].forEach(function (sgn) {
+      D.eye(ctx, self, {
+        x: sgn * 0.075, y: 0.025, rx: 0.030, ry: 0.020,
+        shape: 'glow', glowColor: '#c8e06a',
+      });
+    });
+    ctx.restore();
+    ctx.restore();
+  };
+
+  // ================================================================= MOSEKONE
+  /* A bell of hanging reeds and mist. No legs, no arms — the silhouette is a
+   * wide skirt tapering to a hunched head, trailing wisps. */
+  A.mosekone = function (ctx, self, t, st) {
+    const reed = D.ramp('#6b7f3a');
+    const mist = D.ramp('#9ab0a0');
+    const drift = Math.sin(t * 1.2) * 0.025;
+
+    D.contact(ctx, self, 0.42, 0.24);
+    ctx.save();
+    ctx.translate(0, drift);
+
+    // trailing mist below the skirt
+    for (let i = 0; i < 4; i++) {
+      const k = ((t * 0.35 + i / 4) % 1);
+      ctx.globalAlpha = (1 - k) * 0.3;
+      D.ell(ctx, Math.sin(t * 0.8 + i * 2) * 0.16, -0.04 + k * 0.1, 0.20 * (1 - k * 0.3), 0.055);
+      D.flat(ctx, '#c8dcc8', 0);
+    }
+    ctx.globalAlpha = 1;
+
+    // skirt of hanging reeds — wide at the base, no legs
+    const skirtPath = function () {
+      ctx.beginPath();
+      ctx.moveTo(-0.14, -0.78);
+      ctx.quadraticCurveTo(-0.40, -0.40, -0.44, -0.02);
+      ctx.lineTo(0.44, -0.02);
+      ctx.quadraticCurveTo(0.40, -0.40, 0.14, -0.78);
+      ctx.closePath();
+    };
+    skirtPath();
+    D.body(ctx, self, 'skirt', [-0.44, -0.78, 0.44, -0.02], reed);
+    ctx.save();
+    skirtPath(); ctx.clip();
+    for (let i = -5; i <= 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * 0.05, -0.78);
+      ctx.quadraticCurveTo(i * 0.075, -0.4, i * 0.088 + Math.sin(t * 1.5 + i) * 0.012, 0.02);
+      D.stroke(ctx, U.rgba(reed.core, 0.5), W.hair * 1.6);
+    }
+    ctx.restore();
+    // ragged reed hem
+    for (let i = -5; i <= 5; i++) {
+      D.poly(ctx, [[i * 0.082 - 0.024, -0.06], [i * 0.082 + 0.024, -0.06], [i * 0.082, 0.05 + (i % 2) * 0.04]]);
+      D.flat(ctx, reed.shade, W.hair, reed.line);
+    }
+
+    // hunched head, wrapped in mist
+    ctx.save();
+    ctx.translate(0.02, -0.88);
+    D.puff(ctx, 0, 0, 0.22, 0.19, 4, t, 2);
+    ctx.fillStyle = D.lit(ctx, self, 'head', [-0.22, -0.19, 0.22, 0.19], mist);
+    ctx.fill();
+    D.stroke(ctx, U.rgba(mist.line, 0.6), W.form);
+    [-1, 1].forEach(function (s) {
+      D.eye(ctx, self, {
+        x: s * 0.075, y: 0.0, rx: 0.042, ry: 0.030,
+        shape: 'slit', iris: '#d8f06a', white: '#2c3a2a', line: '#1d2a1c', look: 0,
+      });
+    });
+    ctx.restore();
+    ctx.restore();
+  };
+
+  // ================================================================= SLAGGEHUND
+  /* A hound cast from cooled slag. Deliberately chunky and low so it never
+   * reads as Askeøje, which is lean and sleek. */
+  A.slaggehund = function (ctx, self, t, st) {
+    const slag = D.ramp('#5a4a44');
+    const lunge = st.attack ? Math.sin(st.attack * Math.PI) : 0;
+
+    D.contact(ctx, self, 0.48, 0.34);
+    ctx.save();
+    ctx.translate(lunge * 0.1, 0);
+
+    // stubby tail
+    D.taper(ctx, -0.34, -0.36, -0.46, -0.44, 0.05, 0.03);
+    D.body(ctx, self, 'tail', [-0.46, -0.46, -0.3, -0.32], slag, W.form);
+
+    // four thick legs
+    [[-0.24, 0], [-0.06, 1], [0.12, 0], [0.28, 1]].forEach(function (l, i) {
+      const sw = st.moving ? Math.sin(st.walk + l[1] * 2.6) * 0.035 : 0;
+      D.poly(ctx, [[l[0] - 0.055, -0.30], [l[0] + 0.055, -0.30], [l[0] + 0.06 + sw, -0.01], [l[0] - 0.06 + sw, -0.01]]);
+      D.body(ctx, self, 'lg' + i, [l[0] - 0.06, -0.32, l[0] + 0.06, 0], slag, W.form);
+    });
+
+    // heavy squared barrel
+    const bodyPath = function () {
+      D.poly(ctx, [[-0.34, -0.32], [-0.36, -0.60], [0.26, -0.64], [0.32, -0.34]]);
+    };
+    bodyPath();
+    D.body(ctx, self, 'body', [-0.36, -0.64, 0.32, -0.32], slag);
+    D.MAT.ember(ctx, self, bodyPath, slag, 5, t);
+
+    // jagged slag plates along the spine
+    for (let i = -2; i <= 2; i++) {
+      const h = 0.08 + (2 - Math.abs(i)) * 0.05;
+      D.poly(ctx, [[i * 0.115 - 0.05, -0.60], [i * 0.115, -0.60 - h], [i * 0.115 + 0.05, -0.60]]);
+      D.body(ctx, self, 'pl' + i, [i * 0.115 - 0.05, -0.72, i * 0.115 + 0.05, -0.58], D.ramp('#41353a'), W.detail);
+    }
+
+    // blunt heavy head, low to the ground
+    ctx.save();
+    ctx.translate(0.34, -0.52);
+    const headPath = function () { D.poly(ctx, [[-0.16, -0.16], [0.20, -0.13], [0.24, 0.10], [-0.14, 0.14]]); };
+    headPath();
+    D.body(ctx, self, 'head', [-0.16, -0.16, 0.24, 0.14], slag);
+    D.MAT.ember(ctx, self, headPath, slag, 9, t);
+    // heavy jaw with slag teeth
+    for (let i = 0; i < 4; i++) {
+      D.poly(ctx, [[-0.02 + i * 0.06, 0.10], [0.02 + i * 0.06, 0.10], [0.0 + i * 0.06, 0.02]]);
+      D.flat(ctx, '#e8dcc8', W.hair, '#3a3028');
+    }
+    D.eye(ctx, self, { x: 0.06, y: -0.06, rx: 0.048, ry: 0.030, shape: 'glow', glowColor: '#ff9a2a' });
+    ctx.restore();
+    ctx.restore();
+  };
+
+  // ================================================================= GNAVROD
+  /* §9.2 regional boss: a hugely overgrown tree. Markedly larger silhouette
+   * than anything else, with root tendrils that move like slow tentacles. */
+  A.gnavrod = function (ctx, self, t, st) {
+    const bark = D.ramp('#5c452c');
+    const canopy = D.ramp('#3f6b30');
+    const rage = st.attack ? Math.sin(st.attack * Math.PI) : 0;
+
+    D.contact(ctx, self, 0.85, 0.5);
+    ctx.save();
+
+    // root tendrils spread wide at the base
+    for (let i = -3; i <= 3; i++) {
+      if (!i) continue;
+      const s = Math.sign(i);
+      const wave = Math.sin(t * 1.1 + i) * 0.05;
+      ctx.beginPath();
+      ctx.moveTo(i * 0.07, -0.22);
+      ctx.quadraticCurveTo(i * 0.20, -0.10 + wave, i * 0.30 + s * 0.12, 0.0 + wave * 0.5);
+      D.stroke(ctx, bark.line, W.silhouette * 1.6);
+      D.stroke(ctx, bark.mid, W.silhouette);
+    }
+
+    // massive trunk
+    const trunk = function () {
+      ctx.beginPath();
+      ctx.moveTo(-0.36, -0.10);
+      ctx.quadraticCurveTo(-0.30, -0.60, -0.26, -0.96);
+      ctx.lineTo(0.26, -0.96);
+      ctx.quadraticCurveTo(0.30, -0.60, 0.36, -0.10);
+      ctx.closePath();
+    };
+    trunk();
+    D.body(ctx, self, 'trunk', [-0.36, -0.96, 0.36, -0.10], bark);
+    D.MAT.bark(ctx, self, trunk, bark, 3);
+
+    // heavy canopy overhanging the trunk
+    const cap = function () { D.puff(ctx, 0, -1.10, 0.56, 0.30, 6, t * 0.4, 1); };
+    cap();
+    D.body(ctx, self, 'canopy', [-0.56, -1.40, 0.56, -0.80], canopy);
+    D.MAT.leaf(ctx, self, cap, canopy, 4);
+
+    // the face carved into the bark; the brow drops as it takes damage
+    const hurt = st.hpFrac == null ? 1 : st.hpFrac;
+    const browY = -0.72 - (1 - hurt) * 0.03;
+    [-1, 1].forEach(function (s) {
+      // deep-set knothole eyes
+      D.ell(ctx, s * 0.15, -0.62, 0.085, 0.075);
+      D.flat(ctx, '#1d1710', W.form, '#0f0b07');
+      D.eye(ctx, self, {
+        x: s * 0.15, y: -0.62, rx: 0.05, ry: 0.038,
+        shape: 'glow', glowColor: rage > 0.2 ? '#ffd05e' : '#c8f06a',
+      });
+      // bark brow ridge, angrier the more damage taken
+      ctx.save();
+      ctx.translate(s * 0.15, browY);
+      ctx.rotate(-s * (0.22 + (1 - hurt) * 0.35));
+      D.poly(ctx, [[-0.11, -0.02], [0.11, -0.05], [0.11, 0.035], [-0.11, 0.045]]);
+      D.flat(ctx, bark.shade, W.detail, bark.line);
+      ctx.restore();
+    });
+    // a splitting mouth in the grain
+    ctx.beginPath();
+    ctx.moveTo(-0.16, -0.42);
+    ctx.quadraticCurveTo(0, -0.42 + 0.09 + rage * 0.06, 0.16, -0.42);
+    D.stroke(ctx, '#160f09', W.form * 1.5);
+
+    ctx.restore();
+  };
+
+  /* One entry point for the whole game. The critter definition object doubles
+   * as the gradient cache, which is safe because every call scales to the same
+   * unit space before drawing. */
+  A.draw = function (ctx, critter, o) {
+    const fn = A[critter.id];
+    if (!fn) return false;
+    o = o || {};
+    ctx.save();
+    const s = (o.scale || 1) * (critter.artScale || 1);
+    ctx.scale(s, s);
+    if (o.flip) ctx.scale(-1, 1);
+    if (o.alpha != null) ctx.globalAlpha = o.alpha;
+    if (o.filter && 'filter' in ctx) ctx.filter = o.filter;
+    fn(ctx, critter, o.t || 0, o.st || {});
+    ctx.restore();
+    return true;
+  };
+
   NS.CritterArt = A;
 })(window.COC);

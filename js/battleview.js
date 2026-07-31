@@ -10,7 +10,7 @@ window.COC = window.COC || {};
   'use strict';
 
   const U = NS.U;
-  const Art = NS.Art;
+  const CA = NS.CritterArt;
   const R = NS.Roster;
   const C = NS.Combat;
 
@@ -268,17 +268,16 @@ window.COC = window.COC || {};
       filter = 'brightness(1.18) saturate(1.5)';
     }
 
-    ctx.save();
-    if (u.side === 'foe') ctx.scale(-1, 1);
-    if (filter !== 'none' && 'filter' in ctx) ctx.filter = filter;
-    Art.critter(ctx, u.def.art, {
-      t, scale,
-      walk: t * 3,
-      moving: false,
-      attack: u.anim.attack,
-      mood: dead ? 'ko' : null,
+    CA.draw(ctx, u.def, {
+      t, scale, flip: u.side === 'foe', filter: filter,
+      st: {
+        attack: u.anim.attack,
+        walk: t * 3,
+        moving: false,
+        ko: dead,
+        hpFrac: u.hp / u.maxHp,
+      },
     });
-    ctx.restore();
 
     if (u.shield > 0) {
       ctx.save();
