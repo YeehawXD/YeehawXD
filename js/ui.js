@@ -826,7 +826,13 @@ window.COC = window.COC || {};
       .filter((c) => UI.codexFilter === 'all' || c.element === UI.codexFilter)
       .forEach((c) => {
         const card = UI.card(c, { size: 100 });
-        if (!UI.save.seen[c.id]) card.style.filter = 'grayscale(1) brightness(.55)';
+        /* Playable critters are always legible — the Codex is a reference for
+         * planning a team, and hiding your own cast from it helps nobody.
+         * Wild critters and bosses stay silhouetted until you have met them. */
+        if (c.enemyOnly && !UI.save.seen[c.id]) {
+          card.style.filter = 'grayscale(1) brightness(.45)';
+          card.title = 'Not yet encountered';
+        }
         card.addEventListener('click', () => UI.showDetail(c));
         grid.appendChild(card);
       });
