@@ -17,6 +17,9 @@ window.COC = window.COC || {};
 
   const COLS = 3, ROWS = 2, SLOTS = COLS * ROWS;
   const ULT_COST = 100;
+  /* Seconds before the anti-stalemate pressure starts. Comfortably longer than
+   * any honest fight, so it never affects normal play. */
+  const STALEMATE_AFTER = 45;
 
   const slotCol = (s) => s % COLS;
   const slotRow = (s) => Math.floor(s / COLS);
@@ -485,6 +488,17 @@ window.COC = window.COC || {};
 
     this.time += dt;
 
+    /* Two teams of healers, or a lone Mender against a lone Guardian, can hold
+     * each other forever. After a grace period everything starts taking
+     * escalating unavoidable damage, so every fight is guaranteed to resolve. */
+    if (this.time > STALEMATE_AFTER) {
+      const over = this.time - STALEMATE_AFTER;
+      const pressure = 0.012 * over;
+      for (const u of this.units) {
+        if (!u.dead) this.damage(null, u, u.maxHp * pressure * dt, { pure: true, noEnergy: true });
+      }
+    }
+
     for (const u of this.units) {
       if (u.dead) continue;
 
@@ -593,6 +607,6 @@ window.COC = window.COC || {};
 
   NS.Combat = {
     Battle, COLS, ROWS, SLOTS, ULT_COST,
-    slotCol, slotRow, hasStatus, atkOf, defOf, canAct, mitigate,
+    slotCol, slotRow, hasStatus, atkOf, defOf, canAct, mitigate, STALEMATE_AFTER,
   };
 })(window.COC);

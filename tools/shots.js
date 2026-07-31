@@ -68,20 +68,22 @@ function watch(page, tag) {
 
   // fight
   await page.click('#btn-fight');
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(1400);
   await shot('8-battle-start');
-  await page.waitForTimeout(4000);
-  await shot('9-battle-mid');
 
-  // fire an ultimate
-  await page.evaluate(() => {
+  // charge everyone and fire an ultimate while the fight is still live
+  const fired = await page.evaluate(() => {
     const UI = window.COC.UI;
-    if (UI.battle) UI.battle.allOf('ally').forEach((u) => { u.energy = 100; });
+    if (!UI.battle || UI.battle.state === 'won' || UI.battle.state === 'lost') return false;
+    UI.battle.allOf('ally').forEach((u) => { u.energy = 100; });
+    const first = UI.battle.side('ally')[0];
+    if (!first) return false;
+    UI.battle.fireUlt(first);
+    return true;
   });
-  await page.waitForTimeout(200);
-  const ult = await page.$('#ult-bar .ult-btn.ready');
-  if (ult) { await ult.click(); await page.waitForTimeout(500); }
-  await shot('10-battle-ult');
+  await page.waitForTimeout(350);
+  await shot('9-battle-mid');
+  if (!fired) console.log('note: fight resolved before the ultimate could fire');
 
   // let the fight resolve
   await page.evaluate(() => { window.COC.UI.speed = 6; });

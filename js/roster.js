@@ -409,7 +409,7 @@ window.COC = window.COC || {};
     id: 'thornmaw', name: 'Thornmaw', element: 'bloom', role: 'guardian', grade: 'S',
     title: 'Warden of the Hollow',
     blurb: 'It was a hedge once. Then something crawled inside and stayed.',
-    boss: true, statMult: 2.6,
+    boss: true, statMult: 1.75,
     passive: { name: 'Overgrowth', text: 'Regenerates 2% of max health every second.' },
     ult: {
       name: 'Bramble Cage', cost: 100,
@@ -430,7 +430,7 @@ window.COC = window.COC || {};
     id: 'cinderhorn', name: 'Cinderhorn', element: 'ember', role: 'striker', grade: 'S',
     title: 'The Long Burn',
     blurb: 'Walked out of the caldera and never cooled down.',
-    boss: true, statMult: 2.4,
+    boss: true, statMult: 1.8,
     passive: { name: 'Rising Heat', text: 'Attack increases 6% every 5 seconds, without limit.' },
     ult: {
       name: 'Pyroclasm', cost: 100,
@@ -450,7 +450,7 @@ window.COC = window.COC || {};
     id: 'voidpaw', name: 'Voidpaw', element: 'spark', role: 'trickster', grade: 'S',
     title: 'What Came Through',
     blurb: 'It wears the shape of a critter the way a hand wears a glove.',
-    boss: true, statMult: 3.0,
+    boss: true, statMult: 2.0,
     passive: { name: 'Unmaking', text: 'Immune to stun and freeze. Heals for 30% of the damage it deals.' },
     ult: {
       name: 'Erasure', cost: 100,

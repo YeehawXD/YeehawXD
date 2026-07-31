@@ -94,20 +94,20 @@ window.COC = window.COC || {};
     {
       n: 1, name: 'Hollow Meadow',
       sky: ['#3b6f4a', '#2a4f39'], ground: '#5f9a52', accent: '#8fd06a',
-      pool: ['sludgeling', 'rockhound', 'wisp', 'pip', 'quill'],
-      boss: 'thornmaw', rows: 7, baseLevel: 1,
+      pool: ['sludgeling', 'sludgeling', 'rockhound', 'wisp', 'quill'],
+      boss: 'thornmaw', rows: 7, baseLevel: 1, levelSpan: 6,
     },
     {
       n: 2, name: 'Cinder Reach',
       sky: ['#6b3a2f', '#43231d'], ground: '#8a5340', accent: '#f0a04a',
       pool: ['rockhound', 'wisp', 'cinder', 'quill', 'coral', 'sludgeling'],
-      boss: 'cinderhorn', rows: 8, baseLevel: 5,
+      boss: 'cinderhorn', rows: 8, baseLevel: 8, levelSpan: 7,
     },
     {
       n: 3, name: 'The Long Dark',
       sky: ['#2f2a52', '#191634'], ground: '#4a4270', accent: '#b07fe8',
       pool: ['wisp', 'zephyr', 'geode', 'frost', 'volt', 'rockhound'],
-      boss: 'voidpaw', rows: 9, baseLevel: 10,
+      boss: 'voidpaw', rows: 9, baseLevel: 16, levelSpan: 8,
     },
   ];
 
@@ -180,31 +180,56 @@ window.COC = window.COC || {};
   function makeEncounter(rng, run, node) {
     const act = ACTS[run.act];
     const depth = node.row / Math.max(1, act.rows - 1);
-    const level = Math.round(act.baseLevel + depth * 5 + (node.type === 'elite' ? 3 : 0));
+    const level = Math.round(act.baseLevel + depth * (act.levelSpan || 5) + (node.type === 'elite' ? 2 : 0));
+
+    /* Enemies use the same rules the player does: melee in front where it can
+     * reach, ranged behind where it is protected. A randomly arranged enemy
+     * team is a much softer fight than the board actually allows. */
+    function place(ids) {
+      const front = [1, 0, 2], back = [4, 3, 5];
+      let fi = 0, bi = 0;
+      const out = [];
+      ids.forEach((id) => {
+        const wantsFront = R.get(id).stats.range === 0;
+        let slot = null;
+        if (wantsFront && fi < front.length) slot = front[fi++];
+        else if (!wantsFront && bi < back.length) slot = back[bi++];
+        else if (fi < front.length) slot = front[fi++];
+        else if (bi < back.length) slot = back[bi++];
+        if (slot != null) out.push({ id, level, slot });
+      });
+      return out;
+    }
 
     if (node.type === 'boss') {
       const boss = R.get(act.boss);
-      const foes = [{ id: boss.id, level: level + 2, slot: 1 }];
-      // two escorts, placed in the back row
       const pool = act.pool.filter((id) => !R.get(id).boss);
-      foes.push({ id: rng.pick(pool), level, slot: 3 });
-      foes.push({ id: rng.pick(pool), level, slot: 5 });
+      const escorts = [rng.pick(pool), rng.pick(pool), rng.pick(pool)];
+      const foes = place(escorts);
+      // the boss takes the centre of the front row, displacing an escort
+      const taken = foes.find((f) => f.slot === 1);
+      if (taken) {
+        const free = [0, 2, 3, 4, 5].find((sl) => !foes.some((f) => f.slot === sl));
+        if (free != null) taken.slot = free; else foes.splice(foes.indexOf(taken), 1);
+      }
+      foes.unshift({ id: boss.id, level: level + 2, slot: 1 });
       return { foes, level, boss: true, name: boss.name, title: boss.title };
     }
 
-    const count = node.type === 'elite' ? rng.int(4, 5) : U.clamp(2 + Math.floor(depth * 3), 2, 5);
-    const slots = rng.shuffle([0, 1, 2, 3, 4, 5]).slice(0, count);
-    const foes = slots.map((slot) => {
-      let id = rng.pick(act.pool);
-      // keep melee out of the back row where it would idle
-      const c = R.get(id);
-      if (slot >= 3 && c.stats.range === 0 && rng.chance(0.7)) {
-        const ranged = act.pool.filter((x) => R.get(x).stats.range > 0);
-        if (ranged.length) id = rng.pick(ranged);
-      }
-      return { id, level, slot };
-    });
-    return { foes, level, boss: false, name: node.type === 'elite' ? 'Elite Pack' : 'Wild Critters' };
+    const count = node.type === 'elite'
+      ? rng.int(4, 5)
+      : U.clamp(3 + Math.floor(depth * 2.5), 3, 5);
+    const ids = [];
+    for (let i = 0; i < count; i++) ids.push(rng.pick(act.pool));
+    // keep at least one body up front so the back line is not immediately exposed
+    if (!ids.some((id) => R.get(id).stats.range === 0)) {
+      const melee = act.pool.filter((x) => R.get(x).stats.range === 0);
+      if (melee.length) ids[0] = rng.pick(melee);
+    }
+    return {
+      foes: place(ids), level, boss: false,
+      name: node.type === 'elite' ? 'Elite Pack' : 'Wild Critters',
+    };
   }
 
   // ---------------------------------------------------------------- run
@@ -214,6 +239,10 @@ window.COC = window.COC || {};
     this.rng = U.rng(this.seed);
     this.act = 0;
     this.gold = 80;
+    /* One team level for everyone, raised by winning. Enemy levels climb with
+     * act depth, so tying player power to victories is what keeps the two
+     * curves together — per-critter levelling alone left the team far behind. */
+    this.teamLevel = 1;
     this.relics = [];
     this.roster = [];          // {id, level, hpFrac}
     this.formation = [null, null, null, null, null, null];
@@ -224,19 +253,35 @@ window.COC = window.COC || {};
     this.battlesWon = 0;
     this.startedAt = Date.now();
 
-    (opts.starters || ['pip', 'bramble', 'nimbus']).forEach((id, i) => {
-      this.recruit(id, 1);
-    });
+    (opts.starters || ['bramble', 'pip', 'coral', 'nimbus']).forEach((id) => this.recruit(id));
     this.autoFormation();
     this.map = buildMap(this.rng, ACTS[0]);
   }
 
-  Run.prototype.recruit = function (id, level) {
+  /* A duplicate recruit becomes a permanent +1 bonus instead of a wasted pick. */
+  Run.prototype.recruit = function (id) {
     const existing = this.roster.find((r) => r.id === id);
-    if (existing) { existing.level += 1; return { levelled: true, entry: existing }; }
-    const entry = { id, level: level || 1, hpFrac: 1 };
+    if (existing) { existing.bonus = (existing.bonus || 0) + 1; return { levelled: true, entry: existing }; }
+    const entry = { id, bonus: 0, hpFrac: 1 };
     this.roster.push(entry);
     return { levelled: false, entry };
+  };
+
+  /** Effective level = the shared team level plus this critter's own bonus. */
+  Run.prototype.levelOf = function (entry) {
+    if (!entry) return this.teamLevel;
+    return this.teamLevel + (entry.bonus || 0);
+  };
+
+  Run.prototype.winBattle = function () { this.battlesWon++; };
+
+  /* The team gains a level for every node it clears, not only for fights.
+   * Enemy levels climb with map depth, so pacing power off depth is what keeps
+   * the two curves together — a route through shops and camps must not leave
+   * you underlevelled for the boss at the end of it. */
+  Run.prototype.clearNode = function (node) {
+    const big = node && (node.type === 'boss' || node.type === 'elite');
+    this.teamLevel += big ? 2 : 1;
   };
 
   Run.prototype.owned = function (id) { return this.roster.find((r) => r.id === id); };
@@ -271,7 +316,7 @@ window.COC = window.COC || {};
       if (!id) return;
       const e = this.owned(id);
       if (!e) return;
-      out.push({ id, level: e.level, slot, hpFrac: e.hpFrac });
+      out.push({ id, level: this.levelOf(e), slot, hpFrac: e.hpFrac });
     });
     return out;
   };
@@ -330,6 +375,7 @@ window.COC = window.COC || {};
     if (this.act >= ACTS.length) { this.won = true; return false; }
     this.map = buildMap(this.rng, ACTS[this.act]);
     this.pos = null;
+    this.teamLevel = Math.max(this.teamLevel, ACTS[this.act].baseLevel);
     this.restHeal(0.4);
     return true;
   };
@@ -351,12 +397,12 @@ window.COC = window.COC || {};
     if (this.roster.length) {
       const e = rng.pick(this.roster);
       out.push({
-        kind: 'level', id: e.id, amount: elite ? 2 : 1,
-        title: R.get(e.id).name + ' +' + (elite ? 2 : 1) + ' level',
+        kind: 'level', id: e.id, amount: elite ? 3 : 2,
+        title: R.get(e.id).name + ' +' + (elite ? 3 : 2) + ' levels',
       });
     }
     const relicPool = RELICS.filter((r) => !this.relics.includes(r.id));
-    if (relicPool.length) {
+    if (relicPool.length && (elite || rng.chance(0.4))) {
       const r = rng.pick(relicPool);
       out.push({ kind: 'relic', id: r.id, title: r.name, relic: r });
     }
@@ -367,8 +413,8 @@ window.COC = window.COC || {};
 
   Run.prototype.takeReward = function (rw) {
     switch (rw.kind) {
-      case 'recruit': this.recruit(rw.id, 1 + this.act * 3); this.autoFormationIfSpace(rw.id); break;
-      case 'level': { const e = this.owned(rw.id); if (e) e.level += rw.amount; break; }
+      case 'recruit': this.recruit(rw.id); this.autoFormationIfSpace(rw.id); break;
+      case 'level': { const e = this.owned(rw.id); if (e) e.bonus = (e.bonus || 0) + rw.amount; break; }
       case 'relic': if (!this.relics.includes(rw.id)) this.relics.push(rw.id); break;
       case 'gold': this.gold += rw.amount; break;
       default: break;
@@ -395,14 +441,14 @@ window.COC = window.COC || {};
     });
     rng.shuffle(this.roster.slice()).slice(0, 2).forEach((e) => {
       items.push({
-        kind: 'level', id: e.id, amount: 2, cost: 70,
-        title: R.get(e.id).name + ' +2 levels',
+        kind: 'level', id: e.id, amount: 3, cost: 70,
+        title: R.get(e.id).name + ' +3 levels',
       });
     });
     const relicPool = RELICS.filter((r) => !this.relics.includes(r.id));
-    if (relicPool.length) {
+    if (relicPool.length && rng.chance(0.6)) {
       const r = rng.pick(relicPool);
-      items.push({ kind: 'relic', id: r.id, relic: r, cost: 130, title: r.name });
+      items.push({ kind: 'relic', id: r.id, relic: r, cost: 190, title: r.name });
     }
     items.push({ kind: 'heal', amount: 0.5, cost: 50, title: 'Field rations' });
     return items;

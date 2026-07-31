@@ -60,7 +60,7 @@ window.COC = window.COC || {};
     UI.save.run = {
       seed: r.seed, act: r.act, gold: r.gold, relics: r.relics,
       roster: r.roster, formation: r.formation, pos: r.pos,
-      map: r.map, battlesWon: r.battlesWon,
+      map: r.map, battlesWon: r.battlesWon, teamLevel: r.teamLevel,
       rngState: null,
     };
     UI.persist();
@@ -72,6 +72,7 @@ window.COC = window.COC || {};
     Object.assign(r, {
       act: s.act, gold: s.gold, relics: s.relics, roster: s.roster,
       formation: s.formation, pos: s.pos, map: s.map, battlesWon: s.battlesWon,
+      teamLevel: s.teamLevel || 1,
     });
     return r;
   };
@@ -223,7 +224,7 @@ window.COC = window.COC || {};
     if (!run) { UI.show('title', { replace: true }); return; }
     const act = run.act0();
     $('#map-act').textContent = act.name;
-    $('#map-sub').textContent = 'Act ' + act.n + ' · ' + run.roster.length + ' critters';
+    $('#map-sub').textContent = 'Act ' + act.n + ' · Team level ' + run.teamLevel;
     $('#map-gold').textContent = run.gold;
 
     // relics
@@ -391,7 +392,7 @@ window.COC = window.COC || {};
     bench.innerHTML = '';
     run.roster.forEach((e) => {
       const c = R.get(e.id);
-      const card = UI.card(c, { size: 90, level: e.level });
+      const card = UI.card(c, { size: 90, level: run.levelOf(e) });
       if (run.formation.includes(e.id)) card.classList.add('deployed');
       if (UI.pick === e.id) card.classList.add('chosen');
       card.addEventListener('click', () => UI.tapBench(e.id));
@@ -480,10 +481,7 @@ window.COC = window.COC || {};
   UI.startBattle = function () {
     const run = UI.run;
     const enc = UI.encounter;
-    const allies = run.allyEntries().map((e) => {
-      const st = R.statsFor(R.get(e.id), e.level);
-      return e;
-    });
+    const allies = run.allyEntries();
     const battle = new C.Battle({
       allies, foes: enc.foes,
       relics: run.relicObjects(),
@@ -608,8 +606,8 @@ window.COC = window.COC || {};
       return;
     }
 
-    run.battlesWon++;
     const node = UI.node;
+    run.winBattle();
     const gold = (node.type === 'boss' ? 200 : node.type === 'elite' ? 120 : 55) + run.goldBonus();
     run.gold += gold;
     UI._lastGold = gold;
@@ -675,6 +673,7 @@ window.COC = window.COC || {};
   }
 
   UI.afterNode = function () {
+    if (UI.node && !UI.node.cleared) { UI.node.cleared = true; UI.run.clearNode(UI.node); }
     UI.encounter = null;
     UI.battle = null;
     UI.saveRun();
@@ -736,8 +735,8 @@ window.COC = window.COC || {};
         icon: '📖', title: 'Train', text: 'Give one critter +3 levels.',
         go: () => {
           const e = run.rng.pick(run.roster);
-          e.level += 3;
-          UI.toast(R.get(e.id).name + ' reached level ' + e.level);
+          e.bonus = (e.bonus || 0) + 3;
+          UI.toast(R.get(e.id).name + ' reached level ' + run.levelOf(e));
         },
       },
       {
@@ -912,7 +911,7 @@ window.COC = window.COC || {};
 
     const run = UI.run;
     const owned = run && run.owned(c.id);
-    const st = R.statsFor(c, owned ? owned.level : 1);
+    const st = R.statsFor(c, owned && run ? run.levelOf(owned) : 1);
     const sb = U.el('div', 'statbar');
     const stat = (label, val) => {
       const d = U.el('div');

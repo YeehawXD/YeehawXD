@@ -25,12 +25,12 @@ window.COC = window.COC || {};
   /* Screen position and scale for one board slot, as fractions of the field. */
   const LAYOUT = {
     foe: [
-      { y: 0.330, s: 0.94 },   // row 0 — front
+      { y: 0.345, s: 0.94 },   // row 0 — front
       { y: 0.205, s: 0.80 },   // row 1 — back, further away so smaller
     ],
     ally: [
-      { y: 0.560, s: 1.04 },
-      { y: 0.700, s: 1.16 },
+      { y: 0.605, s: 1.06 },
+      { y: 0.760, s: 1.18 },
     ],
   };
   const COL_X = [0.225, 0.5, 0.775];
@@ -203,7 +203,7 @@ window.COC = window.COC || {};
 
   function drawBands(ctx) {
     const W = View.w, H = View.h;
-    [[0.335, 'rgba(255,120,140,0.10)'], [0.645, 'rgba(120,180,255,0.10)']].forEach(([y, col]) => {
+    [[0.345, 'rgba(255,120,140,0.10)'], [0.605, 'rgba(120,180,255,0.10)']].forEach(([y, col]) => {
       const g = ctx.createLinearGradient(0, H * y - 34, 0, H * y + 22);
       g.addColorStop(0, 'rgba(255,255,255,0)');
       g.addColorStop(0.5, col);
