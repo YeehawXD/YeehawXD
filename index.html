@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1b1430">
+<meta name="description" content="Clash of Critters — a real-time lane battler. Build a deck of eight critters, spend elixir, and knock down the enemy towers.">
+<title>Clash of Critters</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%239a6ae0'/%3E%3Cpath d='M18 22l-4-10 12 5z' fill='%238fd06a'/%3E%3Cpath d='M46 22l4-10-12 5z' fill='%23f0899f'/%3E%3Ccircle cx='32' cy='34' r='18' fill='%238fd06a'/%3E%3Ccircle cx='25' cy='31' r='6' fill='%23fff'/%3E%3Ccircle cx='39' cy='31' r='6' fill='%23fff'/%3E%3Ccircle cx='25' cy='32' r='3' fill='%232b1f3a'/%3E%3Ccircle cx='39' cy='32' r='3' fill='%232b1f3a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ==================================================== MENU -->
+  <section id="s-menu" class="screen active">
+    <div class="topbar">
+      <div class="chip chip-trophy"><span class="ico">🏆</span><b id="menu-trophies">0</b></div>
+      <div class="chip chip-arena" id="menu-arena">Meadow Gate</div>
+      <div class="chip chip-record"><span class="ico">⚔️</span><b id="menu-record">0–0</b></div>
+    </div>
+
+    <div class="hero">
+      <canvas id="menu-mascot" width="340" height="240" aria-hidden="true"></canvas>
+      <h1 class="title">Clash<span>of</span>Critters</h1>
+      <p class="tagline">Eight critters. Ten elixir. Three towers.</p>
+    </div>
+
+    <nav class="menu-grid">
+      <button class="btn btn-gold btn-xl" data-act="battle">
+        <span class="btn-main">Battle</span>
+        <span class="btn-sub" id="menu-difficulty-label">vs Scrapper</span>
+      </button>
+      <button class="btn btn-blue" data-act="deck">Deck</button>
+      <button class="btn btn-blue" data-act="cards">Critters</button>
+      <button class="btn btn-purple" data-act="practice">Practice</button>
+      <button class="btn btn-purple" data-act="stats">Stats</button>
+      <button class="btn btn-ghost" data-act="help">How to play</button>
+      <button class="btn btn-ghost" data-act="settings">Settings</button>
+    </nav>
+    <p class="footnote">No timers. No chests. No purchases. Every critter is unlocked from the start.</p>
+  </section>
+
+  <!-- ==================================================== BATTLE -->
+  <section id="s-battle" class="screen battle">
+    <div class="battle-top">
+      <button class="icon-btn" id="btn-quit" title="Leave battle">✕</button>
+      <div class="crown-row" id="crowns-enemy" data-team="enemy"></div>
+      <div class="clock">
+        <div class="clock-label" id="clock-label">Time left</div>
+        <div class="clock-time" id="clock-time">3:00</div>
+      </div>
+      <div class="crown-row" id="crowns-player" data-team="player"></div>
+      <button class="icon-btn" id="btn-emote" title="Emote">😺</button>
+    </div>
+
+    <div id="arena-wrap">
+      <canvas id="arena"></canvas>
+      <div id="battle-banner" class="banner"></div>
+      <div id="emote-layer"></div>
+    </div>
+
+    <div class="battle-bottom">
+      <div class="next-card">
+        <div class="next-label">Next</div>
+        <div class="mini-card" id="next-card"></div>
+      </div>
+      <div class="hand" id="hand"></div>
+    </div>
+
+    <div class="elixir-wrap">
+      <div class="elixir-bar" id="elixir-bar"><div class="elixir-fill" id="elixir-fill"></div></div>
+      <div class="elixir-count" id="elixir-count">5</div>
+    </div>
+
+    <div id="emote-picker" class="emote-picker hidden"></div>
+  </section>
+
+  <!-- ==================================================== RESULT -->
+  <section id="s-result" class="screen overlay">
+    <div class="result-card">
+      <h2 id="result-title">Victory!</h2>
+      <div class="result-crowns">
+        <div class="side">
+          <div class="side-name">You</div>
+          <div class="big-crowns" id="result-crowns-player">0</div>
+        </div>
+        <div class="vs">vs</div>
+        <div class="side">
+          <div class="side-name" id="result-enemy-name">Rival</div>
+          <div class="big-crowns" id="result-crowns-enemy">0</div>
+        </div>
+      </div>
+      <div class="trophy-delta" id="result-trophies"></div>
+      <ul class="result-stats" id="result-stats"></ul>
+      <div class="result-actions">
+        <button class="btn btn-gold" data-act="rematch">Rematch</button>
+        <button class="btn btn-blue" data-act="menu">Menu</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================================================== DECK -->
+  <section id="s-deck" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" data-act="menu">←</button>
+      <h2 class="screen-title">Your Deck</h2>
+      <button class="icon-btn" id="deck-random" title="Random deck">🎲</button>
+    </div>
+    <div class="deck-slots" id="deck-slots"></div>
+    <div class="deck-meta">
+      <div class="meta-item"><span>Average elixir</span><b id="deck-avg">0.0</b></div>
+      <div class="meta-item"><span>Win condition</span><b id="deck-wincon">—</b></div>
+      <div class="meta-item"><span>Air defence</span><b id="deck-air">—</b></div>
+      <div class="meta-item"><span>Splash</span><b id="deck-splash">—</b></div>
+    </div>
+    <div id="deck-warnings" class="deck-warnings"></div>
+    <div class="section-label">Tap a critter to swap it into the selected slot</div>
+    <div class="collection" id="deck-collection"></div>
+    <div class="deck-actions">
+      <button class="btn btn-blue btn-sm" id="deck-copy">Copy deck code</button>
+      <button class="btn btn-blue btn-sm" id="deck-paste">Paste deck code</button>
+    </div>
+  </section>
+
+  <!-- ==================================================== COLLECTION -->
+  <section id="s-cards" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" data-act="menu">←</button>
+      <h2 class="screen-title">Critters</h2>
+      <div class="filter-row" id="card-filters">
+        <button class="pill active" data-filter="all">All</button>
+        <button class="pill" data-filter="troop">Troops</button>
+        <button class="pill" data-filter="spell">Spells</button>
+        <button class="pill" data-filter="building">Buildings</button>
+      </div>
+    </div>
+    <div class="collection big" id="all-cards"></div>
+  </section>
+
+  <!-- ==================================================== CARD DETAIL -->
+  <section id="s-carddetail" class="screen overlay">
+    <div class="detail-card" id="detail-card"></div>
+  </section>
+
+  <!-- ==================================================== STATS -->
+  <section id="s-stats" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" data-act="menu">←</button>
+      <h2 class="screen-title">Stats</h2>
+      <div class="spacer"></div>
+    </div>
+    <div class="stats-body" id="stats-body"></div>
+  </section>
+
+  <!-- ==================================================== SETTINGS -->
+  <section id="s-settings" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" data-act="menu">←</button>
+      <h2 class="screen-title">Settings</h2>
+      <div class="spacer"></div>
+    </div>
+    <div class="settings-body" id="settings-body"></div>
+  </section>
+
+  <!-- ==================================================== PRACTICE -->
+  <section id="s-practice" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" data-act="menu">←</button>
+      <h2 class="screen-title">Practice</h2>
+      <div class="spacer"></div>
+    </div>
+    <div class="practice-body" id="practice-body"></div>
+  </section>
+
+  <!-- ==================================================== HELP -->
+  <section id="s-help" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" data-act="menu">←</button>
+      <h2 class="screen-title">How to play</h2>
+      <div class="spacer"></div>
+    </div>
+    <div class="help-body">
+      <h3>The goal</h3>
+      <p>Both sides have a <b>King Tower</b> and two <b>Princess Towers</b>. Destroy more towers than your
+        opponent before the clock runs out — or take the King Tower for an instant win.</p>
+
+      <h3>Elixir</h3>
+      <p>Elixir refills on its own, up to ten. Every card costs elixir to play, so the real game is
+        spending less than your opponent for the same result. In the last minute elixir flows
+        <b>twice</b> as fast, and in overtime <b>three times</b> as fast.</p>
+
+      <h3>Placing critters</h3>
+      <p>Drag a card onto your half of the arena, or tap the card and then tap the ground. Spells can be
+        cast anywhere. Knock down a Princess Tower and you may deploy on that side of the enemy half too.</p>
+
+      <h3>Targeting</h3>
+      <ul>
+        <li><b>Ground / Air</b> — some critters cannot hit fliers at all. Always pack an answer to air.</li>
+        <li><b>Building-seekers</b> like Tusk Charger and Mossy Golem ignore your troops entirely and run
+          straight at a tower. Drop a building to pull them off course.</li>
+        <li><b>Splash</b> attackers hit everything in a small radius — the counter to swarms.</li>
+      </ul>
+
+      <h3>Winning trades</h3>
+      <p>Defend first, then counter-attack with whatever survived. A 3-elixir card that kills a
+        5-elixir card leaves you two elixir ahead — that gap is how pushes get through.</p>
+
+      <h3>Overtime</h3>
+      <p>Level on crowns when time runs out? Two minutes of sudden death: the next tower to fall decides
+        it. Still level after that, and the lowest tower health loses.</p>
+
+      <h3>Controls</h3>
+      <ul>
+        <li><b>Drag</b> a card to the arena, or <b>tap-then-tap</b>.</li>
+        <li><b>1–4</b> selects a card, click to place, <b>Esc</b> cancels.</li>
+        <li><b>Space</b> pauses in practice mode.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ==================================================== PAUSE -->
+  <section id="s-pause" class="screen overlay">
+    <div class="result-card">
+      <h2>Paused</h2>
+      <div class="result-actions column">
+        <button class="btn btn-gold" data-act="resume">Resume</button>
+        <button class="btn btn-blue" data-act="forfeit">Leave battle</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="js/util.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/art.js"></script>
+<script src="js/cards.js"></script>
+<script src="js/battle.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/render.js"></script>
+<script src="js/game.js"></script>
+<script src="js/battlescreen.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
