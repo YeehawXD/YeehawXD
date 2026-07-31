@@ -1,4 +1,5 @@
-/* Screenshot harness — drives the real game in Chromium and captures screens.
+/* Drives the real game in Chromium: captures every screen and fails on any
+ * console error or unhandled exception.
  *   node tools/shots.js [outdir]
  */
 'use strict';
@@ -10,94 +11,111 @@ const root = path.join(__dirname, '..');
 const out = process.argv[2] || path.join(root, 'shots');
 fs.mkdirSync(out, { recursive: true });
 
+const errors = [];
+function watch(page, tag) {
+  page.on('pageerror', (e) => errors.push(tag + ' pageerror: ' + e.message));
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(tag + ' console: ' + m.text()); });
+}
+
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
-  const page = await browser.newPage({ viewport: { width: 430, height: 860 }, deviceScaleFactor: 2 });
-
-  const errors = [];
-  page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
-  page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+  const page = await browser.newPage({ viewport: { width: 430, height: 880 }, deviceScaleFactor: 2 });
+  watch(page, 'phone');
+  const shot = (n) => page.screenshot({ path: path.join(out, n + '.png') });
 
   await page.goto('file://' + path.join(root, 'index.html'));
-  await page.waitForTimeout(900);
-  await page.screenshot({ path: path.join(out, '1-menu.png') });
+  await page.waitForTimeout(800);
+  await shot('1-title');
 
-  // collection
-  await page.click('[data-act="cards"]');
+  // codex + detail
+  await page.click('[data-go="codex"]');
   await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(out, '2-cards.png') });
-
-  // card detail
-  await page.click('#all-cards .card:nth-child(6)');
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(out, '3-detail.png') });
-  await page.click('#s-carddetail .btn-blue');
+  await shot('2-codex');
+  await page.click('#codex-grid .ccard:nth-child(4)');
+  await page.waitForTimeout(350);
+  await shot('3-detail');
+  await page.click('#critter-detail .btn');
   await page.waitForTimeout(200);
-
-  // deck builder
-  await page.click('#s-cards [data-act="menu"]');
-  await page.waitForTimeout(250);
-  await page.click('#s-menu [data-act="deck"]');
-  await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(out, '4-deck.png') });
-
-  // battle
-  await page.click('#s-deck [data-act="menu"]');
-  await page.waitForTimeout(250);
-  await page.click('#s-menu [data-act="battle"]');
-  await page.waitForTimeout(1200);
-  await page.screenshot({ path: path.join(out, '5-battle-countdown.png') });
-
-  // let both sides fight, then drop some cards of our own
-  await page.waitForTimeout(3000);
-  const box = await page.locator('#arena').boundingBox();
-  const drop = async (slot, fx, fy) => {
-    const card = await page.locator('#hand .card').nth(slot).boundingBox();
-    if (!card) return;
-    await page.mouse.move(card.x + card.width / 2, card.y + card.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(box.x + box.width * fx, box.y + box.height * fy, { steps: 12 });
-    await page.mouse.up();
-    await page.waitForTimeout(120);
-  };
-  await drop(0, 0.25, 0.66);
-  await page.waitForTimeout(2200);
-  await drop(1, 0.3, 0.62);
-  await page.waitForTimeout(2500);
-  await drop(2, 0.72, 0.6);
-  await page.waitForTimeout(3500);
-  await page.screenshot({ path: path.join(out, '6-battle-fight.png') });
-
-  await page.waitForTimeout(9000);
-  await page.screenshot({ path: path.join(out, '7-battle-later.png') });
-
-  // fast-forward to the end so we can capture the result card
-  await page.evaluate(() => { window.COC.BattleScreen.speed = 30; });
-  await page.waitForTimeout(14000);
-  await page.screenshot({ path: path.join(out, '8-result.png') });
-
-  // help screen
-  await page.evaluate(() => { window.COC.Game.hideOverlay('result'); window.COC.Game.show('help'); });
+  await page.click('#s-codex [data-back]');
   await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(out, '9-help.png') });
 
-  // desktop-ish viewport sanity check
-  const page2 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-  page2.on('pageerror', (e) => errors.push('desktop pageerror: ' + e.message));
-  await page2.goto('file://' + path.join(root, 'index.html'));
-  await page2.waitForTimeout(700);
-  await page2.click('#s-menu [data-act="battle"]');
-  await page2.waitForTimeout(6000);
-  await page2.screenshot({ path: path.join(out, '10-desktop.png') });
+  // how to play
+  await page.click('[data-go="howto"]');
+  await page.waitForTimeout(300);
+  await shot('4-howto');
+  await page.click('#s-howto [data-back]');
+  await page.waitForTimeout(250);
+
+  // start a run
+  await page.click('[data-go="newrun"]');
+  await page.waitForTimeout(600);
+  await shot('5-map');
+
+  // walk into the first node
+  await page.click('#map-inner .map-node.reachable');
+  await page.waitForTimeout(500);
+  await shot('6-formation');
+
+  // move a critter to prove the formation UI works
+  const bench = await page.$$('#bench .ccard');
+  if (bench.length) {
+    await bench[0].click();
+    await page.waitForTimeout(150);
+    await page.click('#board .slot:nth-child(2)');
+    await page.waitForTimeout(250);
+    await shot('7-formation-moved');
+  }
+
+  // fight
+  await page.click('#btn-fight');
+  await page.waitForTimeout(1500);
+  await shot('8-battle-start');
+  await page.waitForTimeout(4000);
+  await shot('9-battle-mid');
+
+  // fire an ultimate
+  await page.evaluate(() => {
+    const UI = window.COC.UI;
+    if (UI.battle) UI.battle.allOf('ally').forEach((u) => { u.energy = 100; });
+  });
+  await page.waitForTimeout(200);
+  const ult = await page.$('#ult-bar .ult-btn.ready');
+  if (ult) { await ult.click(); await page.waitForTimeout(500); }
+  await shot('10-battle-ult');
+
+  // let the fight resolve
+  await page.evaluate(() => { window.COC.UI.speed = 6; });
+  await page.waitForTimeout(9000);
+  await shot('11-reward');
+
+  const state = await page.evaluate(() => ({
+    screen: window.COC.UI.screen,
+    hasRun: !!window.COC.UI.run,
+    battleState: window.COC.UI.battle ? window.COC.UI.battle.state : null,
+    roster: window.COC.UI.run ? window.COC.UI.run.roster.length : 0,
+  }));
+  console.log('state after first fight:', JSON.stringify(state));
+
+  // take a reward and get back to the map
+  const choice = await page.$('#reward-choices .choice');
+  if (choice) { await choice.click(); await page.waitForTimeout(600); }
+  await shot('12-map-after');
+
+  // desktop sanity check
+  const wide = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+  watch(wide, 'desktop');
+  await wide.goto('file://' + path.join(root, 'index.html'));
+  await wide.waitForTimeout(700);
+  await wide.screenshot({ path: path.join(out, '13-desktop.png') });
 
   await browser.close();
 
   if (errors.length) {
-    console.log('PAGE ERRORS:');
+    console.log('\nERRORS:');
     [...new Set(errors)].forEach((e) => console.log(' -', e));
     process.exitCode = 1;
   } else {
-    console.log('no page errors');
+    console.log('\nno console errors');
   }
   console.log('screenshots in', out);
 })();

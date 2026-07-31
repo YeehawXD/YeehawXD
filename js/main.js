@@ -1,132 +1,121 @@
-/* Clash of Critters — main.js
- * Bootstrap: load the profile, wire up global navigation, start on the menu.
+/* Critter Clash — main.js
+ * Boot, global wiring, and the handful of controls that live outside a screen.
  */
 (function (NS) {
   'use strict';
 
   const U = NS.U;
-  const $ = U.$, $$ = U.$$;
-  const Game = NS.Game;
-  const BS = NS.BattleScreen;
+  const $ = U.$;
+  const UI = NS.UI;
   const Audio = NS.Audio;
 
-  function startRankedBattle() {
-    Audio.unlock();
-    BS.start({});
-  }
-
-  function wireNav() {
+  function wire() {
     document.addEventListener('click', (ev) => {
-      const btn = ev.target.closest('[data-act]');
-      if (!btn) return;
-      const act = btn.dataset.act;
+      const go = ev.target.closest('[data-go]');
+      if (go) {
+        Audio.unlock();
+        switch (go.dataset.go) {
+          case 'newrun':
+            UI.hideOverlay('runend');
+            UI.newRun();
+            break;
+          case 'continue': UI.continueRun(); break;
+          case 'title':
+            UI.hideOverlay('runend');
+            UI.hideOverlay('reward');
+            UI.stack = [];
+            UI.show('title', { replace: true });
+            Audio.stopMusic();
+            Audio.play('back');
+            break;
+          case 'codex': UI.show('codex'); break;
+          case 'howto': UI.show('howto'); break;
+          case 'settings': UI.show('settings'); break;
+          case 'team': UI.encounter = null; UI.show('team'); break;
+          default: break;
+        }
+        return;
+      }
+      if (ev.target.closest('[data-back]')) {
+        Audio.play('back');
+        UI.back();
+      }
+    });
+
+    $('#btn-autoform').addEventListener('click', () => {
+      UI.run.autoFormation();
+      UI.pick = null;
+      UI.renderTeam();
+      UI.saveRun();
+      Audio.play('place');
+    });
+
+    $('#btn-fight').addEventListener('click', () => {
       Audio.unlock();
-      switch (act) {
-        case 'battle': startRankedBattle(); break;
-        case 'menu':
-          BS.stop();
-          Game.hideOverlay('result');
-          Game.hideOverlay('pause');
-          Game.hideOverlay('carddetail');
-          Game.show('menu');
-          Audio.play('back');
-          break;
-        case 'deck': Game.show('deck'); Audio.play('click'); break;
-        case 'cards': Game.show('cards'); Audio.play('click'); break;
-        case 'stats': Game.show('stats'); Audio.play('click'); break;
-        case 'settings': Game.show('settings'); Audio.play('click'); break;
-        case 'practice': Game.show('practice'); Audio.play('click'); break;
-        case 'help': Game.show('help'); Audio.play('click'); break;
-        case 'rematch':
-          Game.hideOverlay('result');
-          if (BS.info && BS.info.practice) {
-            Game.show('practice');
-          } else {
-            startRankedBattle();
-          }
-          break;
-        case 'resume':
-          BS.paused = false;
-          Game.hideOverlay('pause');
-          Audio.play('click');
-          break;
-        case 'forfeit':
-          BS.forfeit();
-          break;
-        default: break;
-      }
+      if (UI.encounter) UI.startBattle();
+      else UI.show('map', { replace: true });
     });
 
-    // card filters
-    $('#card-filters').addEventListener('click', (ev) => {
-      const p = ev.target.closest('.pill');
-      if (!p) return;
-      Game.cardFilter = p.dataset.filter;
-      Game.renderCollection();
-      Audio.play('select');
-    });
-
-    $('#deck-random').addEventListener('click', () => Game.randomDeck());
-
-    $('#deck-copy').addEventListener('click', async () => {
-      const code = Game.deckCode();
-      try {
-        await navigator.clipboard.writeText(code);
-        Game.toast('Deck code copied');
-      } catch (e) {
-        window.prompt('Copy your deck code:', code);
-      }
+    $('#btn-speed').addEventListener('click', () => {
+      UI.speed = UI.speed >= 3 ? 1 : UI.speed + 1;
+      UI.save.settings.speed = UI.speed;
+      UI.persist();
+      $('#btn-speed').textContent = UI.speed + '×';
       Audio.play('click');
     });
 
-    $('#deck-paste').addEventListener('click', async () => {
-      let code = '';
-      try { code = await navigator.clipboard.readText(); } catch (e) { /* fall through */ }
-      if (!code) code = window.prompt('Paste a deck code:') || '';
-      if (!code) return;
-      if (Game.applyDeckCode(code)) Game.toast('Deck loaded');
-      else { Game.toast('That deck code is not valid'); Audio.play('error'); }
+    $('#btn-auto').addEventListener('click', () => {
+      const s = UI.save.settings;
+      s.autoUlt = !s.autoUlt;
+      if (UI.battle) UI.battle.autoUlt = s.autoUlt;
+      $('#btn-auto').classList.toggle('on', s.autoUlt);
+      UI.persist();
+      Audio.play('click');
     });
 
-    // tapping the dimmed backdrop closes the card detail
-    $('#s-carddetail').addEventListener('click', (ev) => {
-      if (ev.target.id === 's-carddetail') Game.hideOverlay('carddetail');
+    // tapping the dim backdrop closes an overlay panel
+    ['critter', 'reward'].forEach((n) => {
+      const el = $('#s-' + n);
+      el.addEventListener('click', (ev) => {
+        if (ev.target === el && n === 'critter') UI.hideOverlay(n);
+      });
     });
 
-    // an audio context can only start from a real gesture
+    window.addEventListener('resize', () => {
+      if (UI.screen === 'battle') UI.resizeBattle();
+    });
+    if (window.ResizeObserver) {
+      new ResizeObserver(() => {
+        if (UI.screen === 'battle') UI.resizeBattle();
+      }).observe($('#field'));
+    }
+
     ['pointerdown', 'keydown'].forEach((e) =>
       window.addEventListener(e, () => Audio.unlock(), { once: true }));
 
-    // pause the battle when the tab goes away
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden && Game.screen === 'battle' && BS.battle &&
-        BS.battle.phase !== 'ended') {
-        BS.paused = true;
-        Game.overlay('pause');
-      }
-    });
-
-    // never let a stray drag scroll the page during a battle
+    // don't let a stray drag scroll the page during a fight
     document.addEventListener('touchmove', (ev) => {
-      if (Game.screen === 'battle') ev.preventDefault();
+      if (UI.screen === 'battle') ev.preventDefault();
     }, { passive: false });
+
+    window.addEventListener('keydown', (ev) => {
+      if (UI.screen !== 'battle' || !UI._ultBtns) return;
+      const n = parseInt(ev.key, 10);
+      if (n >= 1 && n <= UI._ultBtns.length) UI._ultBtns[n - 1].btn.click();
+    });
   }
 
   function boot() {
-    Game.load();
-    BS.init();
-    wireNav();
-    Game.show('menu');
-
-    // Warm the thumbnail cache so the first deck screen opens instantly.
+    UI.loadSave();
+    NS.BattleView.attach($('#battle-canvas'));
+    wire();
+    UI.show('title', { replace: true });
+    // warm the portrait cache so the first grid paints instantly
     requestAnimationFrame(() => {
-      NS.Cards.list.forEach((c) => NS.Render.cardThumb(c, 100));
+      NS.Roster.list.forEach((c) => UI.thumb(c, 96));
     });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
-  } else {
-    boot();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })(window.COC);

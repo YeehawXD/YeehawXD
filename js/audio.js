@@ -125,7 +125,23 @@ window.COC = window.COC || {};
     click() { tone({ type: 'triangle', freq: 660, freqTo: 880, dur: 0.08, gain: 0.18 }); },
     back() { tone({ type: 'triangle', freq: 480, freqTo: 300, dur: 0.1, gain: 0.16 }); },
     error() { tone({ type: 'square', freq: 180, freqTo: 120, dur: 0.16, gain: 0.14 }); },
+    deny() { tone({ type: 'square', freq: 200, freqTo: 130, dur: 0.14, gain: 0.12 }); },
     select() { tone({ type: 'sine', freq: 880, dur: 0.06, gain: 0.14 }); },
+    place() {
+      tone({ type: 'triangle', freq: 420, freqTo: 700, dur: 0.1, gain: 0.16 });
+      noise({ freq: 900, freqTo: 300, dur: 0.09, gain: 0.07, filter: 'lowpass' });
+    },
+    start() {
+      [392, 523, 659, 784].forEach((f, i) =>
+        tone({ type: 'triangle', freq: f, dur: 0.3, gain: 0.16, delay: i * 0.08 }));
+    },
+    /* The ultimate is the one moment the player caused, so it gets the biggest
+       sound in the game: a rising sweep plus a low impact. */
+    ult() {
+      tone({ type: 'sawtooth', freq: 260, freqTo: 1300, dur: 0.32, gain: 0.16, filter: 'lowpass', filterFreq: 2600 });
+      tone({ type: 'sine', freq: 140, freqTo: 60, dur: 0.42, gain: 0.24, delay: 0.16 });
+      noise({ freq: 2200, freqTo: 500, dur: 0.4, gain: 0.14, delay: 0.14 });
+    },
 
     deploy() {
       tone({ type: 'sine', freq: 300, freqTo: 620, dur: 0.16, gain: 0.22 });

@@ -76,27 +76,39 @@ window.COC = window.COC || {};
   };
 
   // ---------------------------------------------------------------- colors
-  U.hex = function (hex) {
-    const s = hex.replace('#', '');
+  /* Parse #rgb, #rrggbb or an rgb()/rgba() string.
+   * Accepting both matters: these helpers compose (shade of a mix of a shade),
+   * so anything that only spoke hex would silently produce NaN channels — which
+   * canvas ignores, leaving whatever fill was set last. */
+  U.hex = function (col) {
+    if (typeof col !== 'string') return { r: 0, g: 0, b: 0 };
+    const m = col.match(/rgba?\(([^)]+)\)/i);
+    if (m) {
+      const p = m[1].split(',').map((v) => parseFloat(v));
+      return { r: p[0] | 0, g: p[1] | 0, b: p[2] | 0 };
+    }
+    const s = col.replace('#', '');
     const n = parseInt(s.length === 3 ? s.split('').map((c) => c + c).join('') : s, 16);
+    if (isNaN(n)) return { r: 0, g: 0, b: 0 };
     return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
   };
-  U.rgba = function (hex, a) {
-    const c = U.hex(hex);
+  const hh = (v) => ('0' + Math.round(U.clamp(v, 0, 255)).toString(16)).slice(-2);
+  /** Always returns #rrggbb so results can be fed straight back in. */
+  U.toHex = function (r, g, b) { return '#' + hh(r) + hh(g) + hh(b); };
+
+  U.rgba = function (col, a) {
+    const c = U.hex(col);
     return `rgba(${c.r},${c.g},${c.b},${a})`;
   };
-  U.mix = function (h1, h2, t) {
-    const a = U.hex(h1), b = U.hex(h2);
-    const r = Math.round(U.lerp(a.r, b.r, t));
-    const g = Math.round(U.lerp(a.g, b.g, t));
-    const bl = Math.round(U.lerp(a.b, b.b, t));
-    return `rgb(${r},${g},${bl})`;
+  U.mix = function (c1, c2, t) {
+    const a = U.hex(c1), b = U.hex(c2);
+    return U.toHex(U.lerp(a.r, b.r, t), U.lerp(a.g, b.g, t), U.lerp(a.b, b.b, t));
   };
-  U.shade = function (hex, amt) {
-    // amt > 0 lighten, < 0 darken
-    const c = U.hex(hex);
-    const f = (v) => Math.round(U.clamp(amt > 0 ? v + (255 - v) * amt : v * (1 + amt), 0, 255));
-    return `rgb(${f(c.r)},${f(c.g)},${f(c.b)})`;
+  U.shade = function (col, amt) {
+    // amt > 0 lightens toward white, amt < 0 darkens toward black
+    const c = U.hex(col);
+    const f = (v) => (amt > 0 ? v + (255 - v) * amt : v * (1 + amt));
+    return U.toHex(f(c.r), f(c.g), f(c.b));
   };
 
   // ---------------------------------------------------------------- storage
