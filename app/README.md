@@ -116,10 +116,23 @@ Windows-bygningen laver to filer. Installeren spørger om placering og laver en
 genvej. Den portable `.exe` er én fil, der bare kan køres — den er nok den, du
 er ude efter, hvis du vil sende spillet til nogen.
 
-**Windows-`.exe` skal bygges på Windows.** electron-builder kan i princippet
-krydsbygge fra macOS med Wine, men signering og NSIS opfører sig upålideligt den
-vej. Har du kun en Mac, er den nemme løsning at køre `npm run dist:win` gennem
-en GitHub Actions-runner på `windows-latest`.
+**Kan man bygge Windows-`.exe` fra en Mac?** Ja. `npm run dist:win` er
+afprøvet på en ikke-Windows-maskine og producerede både installeren og en
+portabel `Fantasy-Kritter-portable-1.0.0.exe` — rigtige PE-binære filer med
+ikonet og navnet indlejret. electron-builder henter selv det NSIS-værktøj, den
+skal bruge; Wine er ikke længere nødvendigt.
+
+Det, du *ikke* kan gøre uden for Windows, er at signere med et rigtigt
+certifikat. Uden signering viser Windows en SmartScreen-advarsel første gang
+(**Mere info ▸ Kør alligevel**), og usignerede macOS-bygninger kræver
+højreklik ▸ **Åbn**. Det forsvinder først med et betalt udviklercertifikat, og
+det er en pris, ikke en fejl.
+
+Vil du hellere have bygningerne lavet på de rigtige maskiner — og en signeret
+kæde senere — så ligger opskriften klar: gå til fanen **Actions** på GitHub,
+vælg **Byg desktop-app** og tryk **Run workflow**. Den bygger alle tre
+platforme parallelt, og filerne hentes under **Artifacts**. Se
+[`.github/workflows/desktop.yml`](../.github/workflows/desktop.yml).
 
 ### Vinduet
 

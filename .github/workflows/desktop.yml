@@ -1,0 +1,75 @@
+# Bygger desktop-appen på rigtige maskiner.
+#
+# Grunden til at den findes: en Windows-.exe skal bygges på Windows.
+# electron-builder kan i princippet krydsbygge fra macOS med Wine, men
+# signering og NSIS opfører sig upålideligt den vej. Har du kun en Mac, er det
+# her den nemme udvej — start den under fanen Actions, og hent filerne
+# bagefter under "Artifacts".
+
+name: Byg desktop-app
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: dist:win
+            name: windows
+          - os: macos-latest
+            target: dist:mac
+            name: macos
+          - os: ubuntu-latest
+            target: dist:linux
+            name: linux
+
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.name }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/desktop/package-lock.json
+
+      # Spillet bygges ind i skallen her frem for at ligge færdigbygget i
+      # repoet, så en artefakt aldrig kan være ældre end js/ og css/.
+      - name: Byg spillet ind i skallen
+        run: node tools/app.js
+
+      - name: Installér
+        working-directory: app/desktop
+        run: npm ci
+
+      - name: Pak
+        working-directory: app/desktop
+        run: npm run ${{ matrix.target }}
+        env:
+          # Uden signeringsnøgler ville electron-builder ellers prøve at
+          # notarisere og fejle. Det er en usigneret bygning — Windows og macOS
+          # vil advare første gang, og det er forventet.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fantasy-kritter-${{ matrix.name }}
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            app/desktop/dist/*.exe
+            app/desktop/dist/*.dmg
+            app/desktop/dist/*.zip
+            app/desktop/dist/*.AppImage
