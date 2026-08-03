@@ -1,0 +1,66 @@
+{
+  "name": "fantasy-kritter",
+  "productName": "Fantasy Kritter",
+  "version": "1.0.0",
+  "description": "Fantasy Kritter — taktisk auto-battler fra De Skæve Lande.",
+  "main": "main.js",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "prestart": "node ../../tools/app.js",
+    "start": "electron .",
+    "predist": "node ../../tools/app.js",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^43.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.fantasykritter.game",
+    "productName": "Fantasy Kritter",
+    "copyright": "Fantasy Kritter",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "web/**/*",
+      "build/icon.*"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Fantasy Kritter",
+      "createDesktopShortcut": true
+    },
+    "portable": {
+      "artifactName": "Fantasy-Kritter-portable-${version}.exe"
+    },
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.games",
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] },
+        { "target": "zip", "arch": ["arm64", "x64"] }
+      ]
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Game",
+      "target": ["AppImage"]
+    }
+  }
+}

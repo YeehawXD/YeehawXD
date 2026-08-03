@@ -1,6 +1,12 @@
 /* Drives the real game in Chromium: captures every screen and fails on any
  * console error or unhandled exception.
- *   node tools/shots.js [outdir]
+ *   node tools/shots.js [outdir] [--bundle]
+ *
+ * --bundle runs the same walkthrough against dist/fantasy-kritter.html — the
+ * single inlined file the iOS and desktop apps actually ship. Those shells
+ * never load index.html, so a bug introduced by inlining (an unescaped
+ * </script>, a module dropped from the script order) would otherwise only show
+ * up as a blank screen inside the packaged app.
  */
 'use strict';
 const path = require('path');
@@ -8,8 +14,18 @@ const fs = require('fs');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 
 const root = path.join(__dirname, '..');
-const out = process.argv[2] || path.join(root, 'shots');
+const args = process.argv.slice(2);
+const bundle = args.includes('--bundle');
+const out = args.find((a) => !a.startsWith('--')) ||
+  path.join(root, bundle ? 'shots/bundle' : 'shots');
+const entry = 'file://' + path.join(root, bundle ? 'dist/fantasy-kritter.html' : 'index.html');
 fs.mkdirSync(out, { recursive: true });
+
+if (bundle && !fs.existsSync(path.join(root, 'dist/fantasy-kritter.html'))) {
+  console.error('dist/fantasy-kritter.html findes ikke — kør: node tools/app.js');
+  process.exit(1);
+}
+console.log('driving', entry);
 
 const errors = [];
 function watch(page, tag) {
@@ -23,7 +39,7 @@ function watch(page, tag) {
   watch(page, 'phone');
   const shot = (n) => page.screenshot({ path: path.join(out, n + '.png') });
 
-  await page.goto('file://' + path.join(root, 'index.html'));
+  await page.goto(entry);
   await page.waitForTimeout(800);
   await shot('1-title');
 
@@ -106,7 +122,7 @@ function watch(page, tag) {
   // desktop sanity check
   const wide = await browser.newPage({ viewport: { width: 1280, height: 860 } });
   watch(wide, 'desktop');
-  await wide.goto('file://' + path.join(root, 'index.html'));
+  await wide.goto(entry);
   await wide.waitForTimeout(700);
   await wide.screenshot({ path: path.join(out, '13-desktop.png') });
 
