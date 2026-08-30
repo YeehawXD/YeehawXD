@@ -353,6 +353,15 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
   color: #08120c; background: #1ed760; border: 1px solid #1ed760;
 }
 .sheet-card a.go:hover{ background: #3be97a; border-color: #3be97a; }
+.sheet-card a.alt{
+  color: var(--ink); background: rgba(232,226,216,.06);
+  border: 1px solid rgba(232,226,216,.18);
+}
+.sheet-card a.alt:hover{ background: rgba(232,226,216,.13); border-color: rgba(232,226,216,.4); }
+.sheet-card .tip{
+  font-size: 12px; line-height: 1.6; color: var(--ink-faint);
+}
+.sheet-card .tip b{ color: var(--ink-dim); font-weight: 600; }
 .sheet-card .copy{
   color: var(--ink); background: rgba(232,226,216,.06);
   border: 1px solid rgba(232,226,216,.18);
@@ -586,18 +595,23 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
   <p class="kicker">De har siddet der hele livet og set skygger blive kastet op på væggen. De har aldrig set andet. Derfor er skyggerne virkeligheden.</p>
   <button type="button" class="enter" id="enter">Træd ind i hulen</button>
   <a class="gate-link" href="https://open.spotify.com/track/5PigCfYuaTai3cDdVZU4nL"
-     target="_blank" rel="noopener">Åbn sangen i Spotify</a>
+     target="_blank" rel="noopener">Start «Sometimes» i din Spotify først</a>
   <p class="fine" id="gate-fine">Med lyd &middot; Platon, Staten VII</p>
 </div>
 
 <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-h">
   <div class="sheet-card">
-    <h2 id="sheet-h">Sådan får du musikken</h2>
-    <p>Åbn sangen i Spotify og lad den spille videre, mens du går gennem hulen.</p>
-    <a class="go" id="sheet-go" href="https://open.spotify.com/track/5PigCfYuaTai3cDdVZU4nL"
-       target="_blank" rel="noopener">Åbn Sometimes i Spotify</a>
+    <h2 id="sheet-h">Start musikken selv</h2>
+    <p>Siden må ikke afspille sangen for dig, og den må ikke åbne din Spotify.
+       Start <b>Sometimes</b> i Spotify, og kom tilbage hertil — den spiller
+       roligt videre i baggrunden, mens du går gennem hulen.</p>
+    <a class="go" id="sheet-app" href="spotify:track:5PigCfYuaTai3cDdVZU4nL">Prøv at åbne Spotify-appen</a>
+    <a class="alt" id="sheet-go" href="https://open.spotify.com/track/5PigCfYuaTai3cDdVZU4nL"
+       target="_blank" rel="noopener">Prøv i browseren</a>
     <button type="button" class="copy" id="sheet-copy">Kopiér link</button>
     <code class="sheet-url">https://open.spotify.com/track/5PigCfYuaTai3cDdVZU4nL</code>
+    <p class="tip">Gør knapperne ingenting, er det sandkassen, der blokerer dem.
+       Søg efter <b>Sometimes &middot; Mattyeux</b> i din Spotify i stedet.</p>
     <button type="button" class="shut" id="sheet-shut">Luk</button>
   </div>
 </div>
@@ -619,91 +633,91 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
       greek: "…ὥσπερ τοῖς θαυματοποιοῖς πρὸ τῶν ἀνθρώπων πρόκειται τὰ παραφράγματα, ὑπὲρ ὧν τὰ θαύματα δεικνύασιν.",
       saying: "Som når gøglerne stiller <span class=\"lift\">et skærmbræt</span> op foran folk, og hen over kanten lader de deres figurer optræde.",
       name: "Platon", src: "Staten VII, 514b",
-      note: "Ordet er παράφραγμα: en skærm. Platon beskriver en skærm, folk ikke kan holde op med at kigge på — 375 f.Kr."
+      note: "Han beskriver en skærm, folk sidder bundet foran og ikke kan se væk fra. Skrevet 2400 år før den første telefon."
     },
     {
       greek: "Ἄτοπον, ἔφη, λέγεις εἰκόνα καὶ δεσμώτας ἀτόπους. — Ὁμοίους ἡμῖν, ἦν δ᾽ ἐγώ.",
       saying: "«Et mærkeligt billede,» sagde han, «og mærkelige fanger.» — <span class=\"lift\">«De ligner os,»</span> svarede jeg.",
       name: "Platon", src: "Staten VII, 515a",
-      note: "Glaukon griner ad fangerne. Sokrates lukker grinet med tre ord."
+      note: "Man læser om fangerne og tænker automatisk på alle andre end sig selv. Præcis dét fanger Sokrates med sit svar."
     },
     {
       greek: "Παντάπασι δή… οἱ τοιοῦτοι οὐκ ἂν ἄλλο τι νομίζοιεν τὸ ἀληθὲς ἢ τὰς τῶν σκευαστῶν σκιάς.",
       saying: "Sådanne mennesker ville ikke regne noget andet for virkeligt end <span class=\"lift\">skyggerne af de ting, man bar forbi.</span>",
       name: "Platon", src: "Staten VII, 515c",
-      note: "Ingen narrer dem. Det kræver bare, at der ikke er noget at sammenligne med."
+      note: "Der skal ingen løgn til. Har du kun set én slags billeder af verden, bliver de din målestok for, hvordan verden er."
     },
     {
       greek: "ὁρῶ γὰρ ἡμᾶς οὐδὲν ὄντας ἄλλο πλὴν εἴδωλ᾽ ὅσοιπερ ζῶμεν ἢ κούφην σκιάν.",
       saying: "Jeg ser, at vi, der lever, ikke er andet end <span class=\"lift\">skyggebilleder eller en flygtig skygge.</span>",
       name: "Sofokles", src: "Aias 125–126",
-      note: "Odysseus siger det, mens han ser sin fjende gå fra forstanden. Ikke skyggerne på væggen — os."
+      note: "Det er ikke kun det, vi ser, der er skygger. Det er vi også — set af hinanden. Næsten alle, du kender, kender du gennem et billede."
     },
     {
       greek: "θάνατός ἐστιν ὁκόσα ἐγερθέντες ὁρέομεν, ὁκόσα δὲ εὕδοντες ὕπνος.",
       saying: "Alt hvad vi ser i vågen tilstand, er <span class=\"lift\">død.</span> Alt hvad vi ser sovende, er søvn.",
       name: "Heraklit", src: "Fragment B21",
-      note: "Han vender det om: det vågne liv er den dybe søvn."
+      note: "Han vender det om: du tror, du er vågen, fordi øjnene er åbne. Heraklit siger, det er dér, søvnen er dybest."
     },
     {
       greek: "Κακοὶ μάρτυρες ἀνθρώποισιν ὀφθαλμοὶ καὶ ὦτα βαρβάρους ψυχὰς ἐχόντων.",
       saying: "Øjne og ører er <span class=\"lift\">dårlige vidner</span> for mennesker, hvis sjæle ikke forstår sproget.",
       name: "Heraklit", src: "Fragment B107",
-      note: "Sanserne lyver ikke. De er vidner — og et vidne er kun så godt som den, der forhører det."
+      note: "Sanserne lyver ikke, de refererer bare. Har du intet at holde synet op imod, gentager du det, du fik vist, og kalder det din mening."
     },
     {
       greek: "ἐτεῇ δὲ οὐδὲν ἴδμεν· ἐν βυθῷ γὰρ ἡ ἀλήθεια.",
       saying: "I virkeligheden ved vi intet. For sandheden ligger <span class=\"lift\">i en afgrund.</span>",
       name: "Demokrit", src: "Fragment B117",
-      note: "βυθός er havets bund. Ikke skjult bag noget — bare for dybt nede til at nogen når den."
+      note: "Ikke skjult af nogen — bare for langt nede til, at nogen når den. Alt du ved, fik du overleveret oppe fra overfladen."
     },
     {
       greek: "τίς δ᾽ οἶδεν εἰ τὸ ζῆν μέν ἐστι κατθανεῖν, τὸ κατθανεῖν δὲ ζῆν;",
       saying: "Hvem ved, om det at leve er at være død — <span class=\"lift\">og det at dø er at leve?</span>",
       name: "Euripides", src: "Fragment 638",
-      note: "Linjen var berømt nok til, at Platon citerer den. Ingen har svaret siden."
+      note: "Spørgsmålet er ikke pænt, men det er ærligt: du kan ikke træde uden for dit eget liv og tjekke, hvilken tilstand du er i."
     },
     {
       greek: "Οἷα ἂν πολλάκις νοήσῃς, τοιαύτη σοι ἔσται ἡ διάνοια· βάπτεται γὰρ ὑπὸ τῶν φαντασιῶν ἡ ψυχή.",
       saying: "Som du tænker igen og igen, sådan bliver dit sind. For <span class=\"lift\">sjælen farves af sine billeder.</span>",
       name: "Marcus Aurelius", src: "Meditationer V, 16",
-      note: "βάπτεται er ordet for stof lagt i farvebad. Det er gentagelsen, der gør farven permanent."
+      note: "Det her er den, du ledte efter. Du vælger ikke, hvad der bliver normalt for dig — det afgør, hvad du ser tit nok."
     },
     {
       greek: "…ἐκ τῶν ὁμοίων ἐνεργειῶν αἱ ἕξεις γίνονται.",
       saying: "Det er <span class=\"lift\">af de handlinger, der ligner hinanden,</span> at vores faste tilbøjeligheder opstår.",
       name: "Aristoteles", src: "Den nikomacheiske etik II, 1103b",
-      note: "Det gentagne holder op med at føles som et valg."
+      note: "Første gang lægger du mærke til det. Hundrede gange senere gør du ikke. Det var ikke tingen, der ændrede sig."
     },
     {
       greek: "Ταράσσει τοὺς ἀνθρώπους οὐ τὰ πράγματα, ἀλλὰ τὰ περὶ τῶν πραγμάτων δόγματα.",
       saying: "Det er ikke tingene, der forstyrrer mennesker, men <span class=\"lift\">deres forestillinger om tingene.</span>",
       name: "Epiktet", src: "Håndbogen 5",
-      note: "Epiktet var slave, før han blev filosof. Afstanden derimellem er hele det rum, du har."
+      note: "Mellem det, der sker, og hvordan du har det med det, ligger en forestilling. Den er din — og den er det eneste, du kan lave om."
     },
     {
       greek: "πᾶν ἐφήμερον, καὶ τὸ μνημονεῦον καὶ τὸ μνημονευόμενον.",
       saying: "Alt varer <span class=\"lift\">én dag</span> — både den, der husker, og det, der bliver husket.",
       name: "Marcus Aurelius", src: "Meditationer IV, 35",
-      note: "Skrevet af verdens mægtigste mand, til ingen andre end ham selv."
+      note: "Skrevet af verdens mægtigste mand i en dagbog, ingen skulle læse. Også det, du bruger din opmærksomhed på i dag, glemmer nogen igen."
     },
     {
       greek: "μὴ φῦναι τὸν ἅπαντα νικᾷ λόγον· τὸ δ᾽, ἐπεὶ φανῇ, βῆναι κεῖθεν ὅθεν περ ἥκει πολὺ δεύτερον.",
       saying: "<span class=\"lift\">Aldrig at være født</span> overgår enhver anden tanke. Men er man først kommet til syne, er det næstbedste at vende hurtigst muligt tilbage, hvor man kom fra.",
       name: "Sofokles", src: "Oidipus i Kolonos 1224–1227",
-      note: "Koret synger det til en blind, landsforvist olding. Sofokles var over 90, da han skrev det."
+      note: "Det mørkeste, de efterlod os. Sofokles var over 90, og lod et kor synge det til en blind, forvist olding."
     },
     {
       greek: "…τὸν ἐπιχειροῦντα λύειν τε καὶ ἀνάγειν, εἴ πως ἐν ταῖς χερσὶ δύναιντο λαβεῖν καὶ ἀποκτείνειν, ἀποκτεινύναι ἄν;",
       saying: "Og den, der prøvede at løsne dem og føre dem op — <span class=\"lift\">ville de ikke slå ham ihjel,</span> hvis de kunne få fat i ham?",
       name: "Platon", src: "Staten VII, 517a",
-      note: "Sådan ender lignelsen. Platon skrev den få år efter, at de henrettede Sokrates."
+      note: "Sådan slutter lignelsen. Den, der kommer tilbage og siger at det var skygger, bliver ikke takket. Sokrates blev henrettet få år før."
     },
     {
       greek: "Τελευταῖον δὴ οἶμαι τὸν ἥλιον… αὐτὸν καθ᾽ αὑτὸν ἐν τῇ αὑτοῦ χώρᾳ δύναιτ᾽ ἂν κατιδεῖν καὶ θεάσασθαι οἷός ἐστιν.",
       saying: "Til sidst ville han kunne se solen selv — ikke som genskin i vand, men <span class=\"lift\">solen selv, på sin egen plads, som den er.</span>",
       name: "Platon", src: "Staten VII, 516b",
-      note: "Han bliver blændet og får ondt i øjnene først. Platon lover ikke, det er behageligt — kun at det kan lade sig gøre."
+      note: "Han bliver blændet først og kan ingenting se. Platon lover ikke, det er rart at komme ud — kun at det kan lade sig gøre, og at ingen kan gøre det for dig."
     }
   ];
 
@@ -983,7 +997,7 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
 
   function openSheet() {
     sheet.hidden = false;
-    $("sheet-go").focus();
+    $("sheet-app").focus();
   }
 
   function closeSheet() {
