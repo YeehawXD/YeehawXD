@@ -1,0 +1,852 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hulen — skygger på væggen</title>
+<meta name="description" content="Platons hulelignelse som en oplevelse: skygger, ild og otte citater om hvorfor det, du ser, bliver til det, du tror er virkeligt.">
+<meta name="theme-color" content="#07080c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+/* ---------------------------------------------------------------
+   HULEN — Platons hulelignelse
+   Alt i én fil. Ingen build, ingen afhængigheder.
+--------------------------------------------------------------- */
+
+:root{
+  /* --ascent går 0 -> 1 efterhånden som man kommer længere op af hulen */
+  --ascent: 0;
+
+  --ink:        #e8e2d8;
+  --ink-dim:    #a79f93;
+  --ink-faint:  #6f6a62;
+  --ember:      #ff8a3d;
+  --ember-deep: #b8431a;
+  --dawn:       #bcd8ee;
+
+  --stone-0: #05060a;
+  --stone-1: #0d0e14;
+  --stone-2: #171820;
+
+  --serif: "Cormorant Garamond", Iowan Old Style, Palatino, Georgia, serif;
+  --sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --pad: clamp(20px, 5vw, 64px);
+}
+
+*{ box-sizing: border-box; }
+
+[hidden]{ display: none !important; }
+
+html, body{ height: 100%; }
+
+body{
+  margin: 0;
+  background: var(--stone-0);
+  color: var(--ink);
+  font-family: var(--serif);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* =============================================================
+   HULEN — baggrundslagene
+   ============================================================= */
+
+.cave{ position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+
+/* Selve stenvæggen */
+.wall{
+  position: absolute; inset: -5%;
+  background:
+    radial-gradient(120% 90% at 50% 115%,
+      color-mix(in oklab, #3a1f10, var(--stone-1) calc((1 - var(--ascent)) * 0%)) 0%,
+      #1b1109 22%,
+      var(--stone-1) 62%,
+      var(--stone-0) 100%),
+    radial-gradient(80% 60% at 18% 12%, rgba(255,255,255,.035), transparent 60%),
+    radial-gradient(70% 55% at 84% 26%, rgba(255,255,255,.025), transparent 60%);
+  filter: saturate(calc(1 - var(--ascent) * .45));
+}
+
+/* Ujævn sten: to lag blødt støj-mønster */
+.wall::after{
+  content: ""; position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='420' height='420' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  opacity: .32;
+}
+
+/* Ilden bag ryggen på fangerne */
+.fire{
+  position: absolute; left: 50%; bottom: -34vh;
+  width: min(170vw, 1500px); height: min(120vh, 1100px);
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side,
+      rgba(255,166,84,.50) 0%,
+      rgba(255,122,40,.28) 34%,
+      rgba(184,67,26,.14) 58%,
+      transparent 78%);
+  opacity: calc(1 - var(--ascent) * .88);
+  animation: flicker 5.5s infinite steps(1, end);
+  will-change: opacity, transform;
+}
+
+@keyframes flicker{
+  0%   { transform: translateX(-50%) scale(1.00); filter: brightness(1.00); }
+  9%   { transform: translateX(-51%) scale(1.04); filter: brightness(1.11); }
+  17%  { transform: translateX(-49%) scale(0.98); filter: brightness(0.92); }
+  26%  { transform: translateX(-50%) scale(1.02); filter: brightness(1.06); }
+  38%  { transform: translateX(-50.5%) scale(0.99); filter: brightness(0.96); }
+  49%  { transform: translateX(-49.5%) scale(1.05); filter: brightness(1.14); }
+  61%  { transform: translateX(-50%) scale(1.00); filter: brightness(0.99); }
+  73%  { transform: translateX(-50.5%) scale(1.03); filter: brightness(1.08); }
+  86%  { transform: translateX(-49.5%) scale(0.97); filter: brightness(0.90); }
+  100% { transform: translateX(-50%) scale(1.00); filter: brightness(1.00); }
+}
+
+/* Processionen af skygger, der bæres forbi ilden */
+.procession{ position: absolute; inset: 0; }
+
+.figure{
+  position: absolute;
+  bottom: var(--bottom, 6%);
+  left: 0;
+  width: var(--w, 22vmin);
+  color: #000;
+  opacity: calc(var(--o, .5) * (1 - var(--ascent) * .8));
+  filter: blur(var(--blur, 7px));
+  transform: translate3d(-30vw, 0, 0);
+  animation: drift var(--dur, 46s) linear infinite;
+  animation-delay: var(--delay, 0s);
+  will-change: transform;
+}
+.figure svg{ display: block; width: 100%; height: auto; }
+
+@keyframes drift{
+  from { transform: translate3d(-30vw, 0, 0) scaleX(var(--flip, 1)); }
+  to   { transform: translate3d(130vw, 0, 0) scaleX(var(--flip, 1)); }
+}
+
+/* Dagslyset, der siver ind når man nærmer sig udgangen */
+.daylight{
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(58% 78% at 50% -18%, rgba(206,230,248,.55), transparent 66%),
+    linear-gradient(180deg, rgba(188,216,238,.20), transparent 42%);
+  opacity: var(--ascent);
+  transition: opacity 2.4s ease;
+}
+
+.scrim{
+  position: absolute; inset: 0;
+  background: radial-gradient(64% 60% at 50% 46%, rgba(4,5,9,.58), transparent 74%);
+}
+
+.vignette{
+  position: absolute; inset: 0;
+  background: radial-gradient(115% 85% at 50% 45%, transparent 38%, rgba(0,0,0,.62) 100%);
+}
+
+.grain{
+  position: absolute; inset: -50%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)' opacity='.42'/%3E%3C/svg%3E");
+  opacity: .07;
+  animation: shift .6s steps(3, end) infinite;
+}
+@keyframes shift{
+  0%   { transform: translate(0,0); }
+  33%  { transform: translate(-3%, 2%); }
+  66%  { transform: translate(2%, -3%); }
+  100% { transform: translate(0,0); }
+}
+
+/* =============================================================
+   PORTEN — første klik (browsere kræver et klik før lyd)
+   ============================================================= */
+
+.gate{
+  position: fixed; inset: 0; z-index: 40;
+  display: grid; place-content: center; justify-items: center;
+  gap: 28px; padding: var(--pad); text-align: center;
+  background: radial-gradient(80% 60% at 50% 50%, rgba(5,6,10,.58), rgba(5,6,10,.88));
+  backdrop-filter: blur(2px);
+  transition: opacity .9s ease, visibility .9s;
+}
+.gate.gone{ opacity: 0; visibility: hidden; pointer-events: none; }
+
+.gate h1{
+  margin: 0;
+  font-size: clamp(52px, 15vmin, 132px);
+  font-weight: 300; letter-spacing: .22em; text-indent: .22em;
+  line-height: 1;
+  background: linear-gradient(180deg, #fff0dd, var(--ember) 62%, var(--ember-deep));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.gate .kicker{
+  margin: 0; max-width: 34ch;
+  font-size: clamp(16px, 2.4vmin, 21px); font-style: italic;
+  color: var(--ink-dim); line-height: 1.6;
+}
+
+.enter{
+  appearance: none; cursor: pointer;
+  font-family: var(--sans); font-size: 13px; font-weight: 500;
+  letter-spacing: .19em; text-transform: uppercase;
+  color: #ffdcbb;
+  padding: 17px 34px; border-radius: 999px;
+  border: 1px solid rgba(255,138,61,.42);
+  background: rgba(255,138,61,.09);
+  transition: background .3s, border-color .3s, transform .2s, color .3s;
+}
+.enter:hover{ background: rgba(255,138,61,.18); border-color: rgba(255,138,61,.7); color: #fff; }
+.enter:active{ transform: scale(.97); }
+.enter:focus-visible{ outline: 2px solid var(--ember); outline-offset: 4px; }
+
+.gate .fine{
+  margin: 0; font-family: var(--sans); font-size: 11.5px;
+  letter-spacing: .13em; text-transform: uppercase; color: var(--ink-faint);
+}
+
+/* =============================================================
+   SCENEN — citaterne
+   ============================================================= */
+
+.stage{
+  position: relative; z-index: 10;
+  height: 100svh;
+  display: grid; grid-template-rows: minmax(0, 1fr) auto;
+  padding: calc(var(--pad) + env(safe-area-inset-top)) var(--pad)
+           calc(var(--pad) + env(safe-area-inset-bottom));
+  opacity: 0; pointer-events: none;
+  transition: opacity 1.3s ease .3s;
+}
+body.entered .stage{ opacity: 1; pointer-events: auto; }
+
+/* Citatet ruller, hvis det er højere end skærmen — bundlinjen bliver stående */
+.viewport{
+  min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  display: grid; place-items: center;
+  padding: 10px 0;
+  scrollbar-width: none;
+}
+.viewport::-webkit-scrollbar{ display: none; }
+
+.card{
+  align-self: center; justify-self: center;
+  width: min(70ch, 100%);
+  text-align: center;
+  transition: opacity .85s ease, transform .85s ease, filter .85s ease;
+}
+.card.out{ opacity: 0; transform: translateY(14px); filter: blur(6px); }
+
+.greek{
+  margin: 0 0 clamp(22px, 4vmin, 40px);
+  font-size: clamp(14px, 2.05vmin, 19px);
+  font-style: italic; font-weight: 300;
+  letter-spacing: .035em; line-height: 1.85;
+  color: color-mix(in oklab, var(--ember) 62%, var(--ink-faint));
+  opacity: .85;
+}
+
+.saying{
+  margin: 0;
+  font-size: clamp(26px, 4.9vmin, 48px);
+  font-weight: 300; line-height: 1.28; letter-spacing: -.005em;
+  text-wrap: balance;
+  text-shadow: 0 2px 40px rgba(0,0,0,.55);
+}
+.saying .lift{ color: #fff; font-style: italic; }
+
+.attrib{
+  margin: clamp(24px, 4vmin, 40px) 0 0;
+  font-family: var(--sans); font-size: 11.5px;
+  letter-spacing: .2em; text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.attrib .src{ color: var(--ink-faint); }
+.attrib .src::before{ content: " · "; }
+
+.note{
+  margin: clamp(26px, 4.5vmin, 44px) auto 0;
+  max-width: 56ch;
+  padding-top: clamp(20px, 3.4vmin, 30px);
+  border-top: 1px solid rgba(232,226,216,.11);
+  font-family: var(--sans); font-size: clamp(13px, 1.75vmin, 15px);
+  line-height: 1.72; color: var(--ink-dim);
+  text-wrap: pretty;
+}
+
+/* =============================================================
+   BUNDEN — navigation + afspiller
+   ============================================================= */
+
+.bar{
+  display: grid; gap: 22px; justify-items: center;
+  padding-top: 26px;
+}
+
+.dots{ display: flex; gap: 9px; }
+.dots button{
+  appearance: none; cursor: pointer; padding: 8px 3px;
+  background: none; border: 0; line-height: 0;
+}
+.dots span{
+  display: block; width: 26px; height: 2px; border-radius: 2px;
+  background: rgba(232,226,216,.2);
+  transition: background .45s ease, width .45s ease;
+}
+.dots button[aria-current="true"] span{ width: 40px; background: var(--ember); }
+.dots button:focus-visible{ outline: 2px solid var(--ember); outline-offset: 2px; border-radius: 6px; }
+
+.nav{ display: flex; align-items: center; gap: 12px; }
+
+.nav button{
+  appearance: none; cursor: pointer;
+  font-family: var(--sans); font-size: 12px; font-weight: 500;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--ink-dim);
+  padding: 13px 26px; border-radius: 999px;
+  border: 1px solid rgba(232,226,216,.16);
+  background: rgba(232,226,216,.04);
+  transition: color .25s, border-color .25s, background .25s, transform .18s;
+}
+.nav button:hover{ color: #fff; border-color: rgba(232,226,216,.4); background: rgba(232,226,216,.09); }
+.nav button:active{ transform: scale(.97); }
+.nav button:focus-visible{ outline: 2px solid var(--ember); outline-offset: 3px; }
+.nav .primary{ color: #ffdcbb; border-color: rgba(255,138,61,.4); background: rgba(255,138,61,.1); }
+.nav .primary:hover{ color: #fff; border-color: rgba(255,138,61,.72); background: rgba(255,138,61,.19); }
+
+/* Afspilleren */
+.player{
+  display: flex; align-items: center; gap: 13px;
+  padding: 9px 9px 9px 15px; border-radius: 999px;
+  border: 1px solid rgba(232,226,216,.13);
+  background: rgba(10,11,16,.62);
+  backdrop-filter: blur(14px);
+  font-family: var(--sans);
+  max-width: 100%;
+}
+
+.eq{ display: flex; align-items: flex-end; gap: 2.5px; height: 15px; flex: none; }
+.eq i{
+  display: block; width: 2.5px; height: 30%; border-radius: 2px;
+  background: var(--ember);
+  animation: bounce 1.1s ease-in-out infinite;
+}
+.eq i:nth-child(2){ animation-delay: .18s; }
+.eq i:nth-child(3){ animation-delay: .36s; }
+.eq i:nth-child(4){ animation-delay: .54s; }
+.player.paused .eq i{ animation-play-state: paused; height: 22%; }
+@keyframes bounce{
+  0%, 100% { height: 22%; }
+  50%      { height: 100%; }
+}
+
+.track{ min-width: 0; line-height: 1.3; }
+.track b{
+  display: block; font-size: 12.5px; font-weight: 600; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.track small{
+  display: block; font-size: 10.5px; color: var(--ink-faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.player .icon{
+  appearance: none; cursor: pointer; flex: none;
+  width: 34px; height: 34px; display: grid; place-items: center;
+  border-radius: 50%; border: 1px solid rgba(232,226,216,.16);
+  background: rgba(232,226,216,.05); color: var(--ink);
+  transition: background .25s, border-color .25s, color .25s;
+}
+.player .icon:hover{ background: rgba(232,226,216,.13); border-color: rgba(232,226,216,.36); color: #fff; }
+.player .icon:focus-visible{ outline: 2px solid var(--ember); outline-offset: 2px; }
+.player .icon svg{ width: 14px; height: 14px; fill: currentColor; }
+.player.paused .pause-i{ display: none; }
+.player:not(.paused) .play-i{ display: none; }
+
+.player a.icon{ text-decoration: none; }
+
+/* Skjult YouTube-afspiller: lyden, ikke billedet */
+#yt-host{
+  position: fixed; width: 1px; height: 1px;
+  left: -100px; top: -100px; opacity: .01; pointer-events: none;
+}
+
+.sr{
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+@media (max-width: 620px){
+  .bar{ gap: 18px; }
+  .note{ text-align: left; }
+  .track b{ max-width: 40vw; }
+  .track small{ max-width: 40vw; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .figure, .fire, .grain, .eq i{ animation: none !important; }
+  .card{ transition-duration: .01ms; }
+}
+</style>
+</head>
+<body>
+
+<div class="cave" aria-hidden="true">
+  <div class="wall"></div>
+  <div class="fire"></div>
+
+  <div class="procession">
+    <!-- Figurerne, der bæres forbi ilden. Kun deres skygger når væggen. -->
+    <div class="figure" style="--w:19vmin; --bottom:4%;  --dur:52s; --delay:-6s;  --o:.62; --blur:7px">
+      <svg viewBox="0 0 100 150" aria-hidden="true"><g fill="currentColor">
+        <ellipse cx="50" cy="17" rx="9.5" ry="10"/>
+        <path d="M39 30 q11 -6 22 0 l4 34 q-15 6 -30 0 z"/>
+        <rect x="31" y="30" width="7" height="30" rx="3.5" transform="rotate(13 34 45)"/>
+        <rect x="62" y="30" width="7" height="30" rx="3.5" transform="rotate(-13 65 45)"/>
+        <rect x="41" y="62" width="8" height="52" rx="4" transform="rotate(6 45 88)"/>
+        <rect x="51" y="62" width="8" height="52" rx="4" transform="rotate(-9 55 88)"/>
+        <ellipse cx="50" cy="4" rx="13" ry="6.5"/>
+        <path d="M40 4 q10 9 20 0 z"/>
+      </g></svg>
+    </div>
+
+    <div class="figure" style="--w:24vmin; --bottom:2%;  --dur:64s; --delay:-28s; --o:.5;  --blur:10px; --flip:-1">
+      <svg viewBox="0 0 100 150" aria-hidden="true"><g fill="currentColor">
+        <ellipse cx="52" cy="19" rx="9" ry="9.5"/>
+        <path d="M41 32 q11 -6 22 0 l3 32 q-14 6 -28 0 z"/>
+        <rect x="64" y="30" width="6.5" height="34" rx="3.2" transform="rotate(-26 67 47)"/>
+        <rect x="33" y="32" width="6.5" height="30" rx="3.2" transform="rotate(15 36 47)"/>
+        <rect x="43" y="62" width="8" height="54" rx="4" transform="rotate(11 47 89)"/>
+        <rect x="53" y="62" width="8" height="54" rx="4" transform="rotate(-5 57 89)"/>
+        <rect x="76" y="6"  width="3.5" height="118" rx="1.75" transform="rotate(7 78 65)"/>
+      </g></svg>
+    </div>
+
+    <div class="figure" style="--w:15vmin; --bottom:28%; --dur:38s; --delay:-14s; --o:.42; --blur:9px">
+      <svg viewBox="0 0 140 80" aria-hidden="true"><g fill="currentColor">
+        <ellipse cx="70" cy="44" rx="17" ry="7"/>
+        <ellipse cx="90" cy="38" rx="8" ry="6.5"/>
+        <path d="M96 36 l14 -3 -13 6 z"/>
+        <path d="M64 40 q-30 -34 -56 -30 q22 14 34 32 z"/>
+        <path d="M74 44 q26 -32 54 -28 q-22 15 -36 34 z"/>
+        <path d="M56 46 q-16 8 -26 6 q14 3 25 -1 z"/>
+      </g></svg>
+    </div>
+
+    <div class="figure" style="--w:30vmin; --bottom:1%;  --dur:78s; --delay:-52s; --o:.4;  --blur:13px">
+      <svg viewBox="0 0 170 120" aria-hidden="true"><g fill="currentColor">
+        <path d="M42 46 q40 -12 80 -2 l10 8 q-6 22 -14 26 l-70 2 q-10 -14 -6 -34 z"/>
+        <path d="M120 46 q14 -10 22 -26 l9 3 q-4 20 -16 32 z"/>
+        <ellipse cx="150" cy="20" rx="11" ry="6" transform="rotate(-24 150 20)"/>
+        <path d="M144 12 l3 -10 4 9 z"/>
+        <path d="M38 48 q-14 12 -22 30 l8 4 q10 -18 22 -26 z"/>
+        <rect x="52" y="72" width="9" height="44" rx="4.5" transform="rotate(7 56 94)"/>
+        <rect x="72" y="72" width="9" height="42" rx="4.5" transform="rotate(-6 76 93)"/>
+        <rect x="104" y="72" width="9" height="44" rx="4.5" transform="rotate(6 108 94)"/>
+        <rect x="120" y="72" width="9" height="42" rx="4.5" transform="rotate(-7 124 93)"/>
+      </g></svg>
+    </div>
+
+    <div class="figure" style="--w:21vmin; --bottom:7%;  --dur:58s; --delay:-40s; --o:.46; --blur:11px; --flip:-1">
+      <svg viewBox="0 0 100 150" aria-hidden="true"><g fill="currentColor">
+        <ellipse cx="50" cy="21" rx="8.5" ry="9"/>
+        <path d="M40 33 q10 -5 20 0 l4 30 q-14 5 -28 0 z"/>
+        <rect x="30" y="20" width="6.5" height="26" rx="3.2" transform="rotate(38 33 33)"/>
+        <rect x="64" y="20" width="6.5" height="26" rx="3.2" transform="rotate(-38 67 33)"/>
+        <rect x="41" y="61" width="8" height="52" rx="4" transform="rotate(4 45 87)"/>
+        <rect x="52" y="61" width="8" height="52" rx="4" transform="rotate(-11 56 87)"/>
+        <rect x="30" y="6" width="40" height="7" rx="3.5"/>
+      </g></svg>
+    </div>
+  </div>
+
+  <div class="daylight"></div>
+  <div class="scrim"></div>
+  <div class="vignette"></div>
+  <div class="grain"></div>
+</div>
+
+<main class="stage" id="stage" aria-live="polite">
+
+  <div class="viewport">
+    <article class="card" id="card">
+    <p class="greek" id="q-greek" lang="grc"></p>
+    <blockquote class="saying" id="q-saying"></blockquote>
+    <p class="attrib"><span class="name" id="q-name"></span><span class="src" id="q-src"></span></p>
+      <p class="note" id="q-note"></p>
+    </article>
+  </div>
+
+  <div class="bar">
+    <nav class="dots" id="dots" aria-label="Vælg citat"></nav>
+
+    <div class="nav">
+      <button type="button" id="prev">Tilbage</button>
+      <button type="button" id="next" class="primary">Videre</button>
+    </div>
+
+    <div class="player paused" id="player" hidden>
+      <div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="track">
+        <b>Sometimes</b>
+        <small id="src-label">Mattyeux, Princess Chelsea, Videoclub</small>
+      </div>
+      <button type="button" class="icon" id="toggle" aria-label="Afspil eller pause">
+        <svg class="play-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        <svg class="pause-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+      </button>
+      <a class="icon" id="open-spotify" href="https://open.spotify.com/track/5PigCfYuaTai3cDdVZU4nL"
+         target="_blank" rel="noopener" aria-label="Åbn sangen i Spotify" title="Åbn i Spotify">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm4.6 14.4a.75.75 0 01-1.03.25c-2.82-1.72-6.37-2.11-10.56-1.15a.75.75 0 01-.33-1.46c4.58-1.05 8.51-.6 11.67 1.33.35.22.46.68.25 1.03zm1.23-2.75a.94.94 0 01-1.29.31c-3.23-1.98-8.15-2.56-11.97-1.4a.94.94 0 11-.54-1.8c4.37-1.32 9.79-.67 13.5 1.6.44.27.58.85.3 1.29zm.11-2.87C14.07 8.48 7.9 8.28 4.2 9.4a1.12 1.12 0 11-.65-2.15C7.8 5.96 14.62 6.2 18.85 8.7a1.12 1.12 0 11-1.14 1.93l.23.15z"/></svg>
+      </a>
+    </div>
+  </div>
+</main>
+
+<div class="gate" id="gate">
+  <h1>Hulen</h1>
+  <p class="kicker">De har siddet der hele livet og set skygger blive kastet op på væggen. De har aldrig set andet. Derfor er skyggerne virkeligheden.</p>
+  <button type="button" class="enter" id="enter">Træd ind i hulen</button>
+  <p class="fine">Med lyd &middot; Platon, Staten VII</p>
+</div>
+
+<div id="yt-host" aria-hidden="true"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ============================================================
+     CITATERNE
+     Græsk tekst efter de gængse udgaver (Burnet / Perseus).
+     Oversættelserne er gengivet frit, men tro mod meningen.
+     ============================================================ */
+
+  var QUOTES = [
+    {
+      greek: "…ὥσπερ τοῖς θαυματοποιοῖς πρὸ τῶν ἀνθρώπων πρόκειται τὰ παραφράγματα, ὑπὲρ ὧν τὰ θαύματα δεικνύασιν.",
+      saying: "Som når gøglerne stiller <span class=\"lift\">et skærmbræt</span> op foran folk, og hen over kanten lader de deres figurer optræde.",
+      name: "Platon",
+      src: "Staten VII, 514b",
+      note: "Ordet Platon bruger er παράφραγμα — en skærm. Bag den går folk forbi med figurer, ilden kaster dem op på væggen, og publikum sidder bundet fast og ser på. Det er skrevet omkring 375 f.Kr. Han har lige beskrevet en skærm, folk ikke kan holde op med at kigge på."
+    },
+    {
+      greek: "Ἄτοπον, ἔφη, λέγεις εἰκόνα καὶ δεσμώτας ἀτόπους. — Ὁμοίους ἡμῖν, ἦν δ᾽ ἐγώ.",
+      saying: "«Et mærkeligt billede,» sagde han, «og mærkelige fanger.» — <span class=\"lift\">«De ligner os,»</span> svarede jeg.",
+      name: "Platon",
+      src: "Staten VII, 515a",
+      note: "Det er lignelsens hårdeste replik. Glaukon griner ad de stakkels fanger, og Sokrates lukker grinet ned med tre ord. Pointen er ikke, at nogen andre sidder i hulen. Pointen er, at du gør."
+    },
+    {
+      greek: "Παντάπασι δή… οἱ τοιοῦτοι οὐκ ἂν ἄλλο τι νομίζοιεν τὸ ἀληθὲς ἢ τὰς τῶν σκευαστῶν σκιάς.",
+      saying: "Sådanne mennesker ville ikke regne noget andet for virkeligt end <span class=\"lift\">skyggerne af de ting, man bar forbi.</span>",
+      name: "Platon",
+      src: "Staten VII, 515c",
+      note: "Her er mekanismen. Fangerne bliver ikke narret af nogen — de gætter bare på, at det, de ser hele tiden, er det, der findes. Det kræver ingen løgn. Det kræver kun, at der ikke er noget at sammenligne med."
+    },
+    {
+      greek: "Οἷα ἂν πολλάκις νοήσῃς, τοιαύτη σοι ἔσται ἡ διάνοια· βάπτεται γὰρ ὑπὸ τῶν φαντασιῶν ἡ ψυχή.",
+      saying: "Som du tænker igen og igen, sådan bliver dit sind. For <span class=\"lift\">sjælen farves af sine billeder.</span>",
+      name: "Marcus Aurelius",
+      src: "Meditationer V, 16",
+      note: "βάπτεται — det samme ord som når stof lægges i farvebad. Ikke ét dyp, men gentagelsen, der gør farven permanent. Marcus Aurelius var romersk kejser, men skrev sin dagbog på græsk, og han skrev den til sig selv."
+    },
+    {
+      greek: "…ἐκ τῶν ὁμοίων ἐνεργειῶν αἱ ἕξεις γίνονται.",
+      saying: "Det er <span class=\"lift\">af de handlinger, der ligner hinanden,</span> at vores faste tilbøjeligheder opstår.",
+      name: "Aristoteles",
+      src: "Den nikomacheiske etik II, 1103b",
+      note: "ἕξις er den tilstand, gentagelsen har efterladt i dig — det, du nu gør uden at vælge det. Aristoteles taler om at øve sig i at spille lyre og bygge huse. Men reglen er den samme for det, du ser: det, der gentages, holder op med at føles som et valg."
+    },
+    {
+      greek: "Κακοὶ μάρτυρες ἀνθρώποισιν ὀφθαλμοὶ καὶ ὦτα βαρβάρους ψυχὰς ἐχόντων.",
+      saying: "Øjne og ører er <span class=\"lift\">dårlige vidner</span> for mennesker, hvis sjæle ikke forstår sproget.",
+      name: "Heraklit",
+      src: "Fragment B107",
+      note: "Heraklit siger ikke, at sanserne lyver. Han siger, at de er vidner — og at et vidne kun er lige så godt som den, der forhører det. Uden noget at holde synet op imod, refererer du bare, hvad der blev vist."
+    },
+    {
+      greek: "Ταράσσει τοὺς ἀνθρώπους οὐ τὰ πράγματα, ἀλλὰ τὰ περὶ τῶν πραγμάτων δόγματα.",
+      saying: "Det er ikke tingene, der forstyrrer mennesker, men <span class=\"lift\">deres forestillinger om tingene.</span>",
+      name: "Epiktet",
+      src: "Håndbogen 5",
+      note: "Epiktet var slave i Rom, før han blev filosof, og han vidste bedre end de fleste, hvad man kan og ikke kan bestemme over. Afstanden mellem tingene og forestillingerne om dem — det er hele det rum, du har at arbejde i."
+    },
+    {
+      greek: "Τελευταῖον δὴ οἶμαι τὸν ἥλιον… αὐτὸν καθ᾽ αὑτὸν ἐν τῇ αὑτοῦ χώρᾳ δύναιτ᾽ ἂν κατιδεῖν καὶ θεάσασθαι οἷός ἐστιν.",
+      saying: "Til sidst, tror jeg, ville han kunne se solen selv — ikke som genskin i vand eller på fremmed grund, men <span class=\"lift\">solen selv, på sin egen plads, som den er.</span>",
+      name: "Platon",
+      src: "Staten VII, 516b",
+      note: "Fangen, der slipper ud, bliver blændet og har ondt i øjnene, og det tager tid, før han kan se noget som helst. Platon lover ikke, at det er behageligt at komme ud. Han siger bare, at det kan lade sig gøre — og at ingen kan gøre det for dig."
+    }
+  ];
+
+  /* ============================================================
+     ELEMENTER
+     ============================================================ */
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  var card = $("card"), gate = $("gate"), stage = $("stage");
+  var elGreek = $("q-greek"), elSaying = $("q-saying"),
+      elName = $("q-name"), elSrc = $("q-src"), elNote = $("q-note");
+  var dots = $("dots"), player = $("player"), srcLabel = $("src-label");
+
+  var index = 0, swapping = false;
+
+  /* ============================================================
+     VISNING AF CITATER
+     ============================================================ */
+
+  function paint(i) {
+    var q = QUOTES[i];
+    elGreek.textContent = q.greek;
+    elSaying.innerHTML = q.saying;
+    elName.textContent = q.name;
+    elSrc.textContent = q.src;
+    elNote.textContent = q.note;
+
+    Array.prototype.forEach.call(dots.children, function (b, n) {
+      b.setAttribute("aria-current", n === i ? "true" : "false");
+    });
+
+    // Lyset stiger, efterhånden som man kommer længere op mod udgangen
+    var ascent = QUOTES.length > 1 ? i / (QUOTES.length - 1) : 0;
+    document.documentElement.style.setProperty("--ascent", (ascent * ascent).toFixed(3));
+  }
+
+  function show(i, instant) {
+    i = (i % QUOTES.length + QUOTES.length) % QUOTES.length;
+    if (i === index && !instant) return;
+
+    if (instant) { index = i; paint(i); return; }
+    if (swapping) return;
+
+    swapping = true;
+    card.classList.add("out");
+    window.setTimeout(function () {
+      index = i;
+      paint(i);
+      var vp = card.parentElement;
+      if (vp && vp.scrollTop) { vp.scrollTop = 0; }
+      card.classList.remove("out");
+      swapping = false;
+    }, 620);
+  }
+
+  QUOTES.forEach(function (q, i) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.innerHTML = "<span></span>";
+    b.setAttribute("aria-label", "Citat " + (i + 1) + " af " + QUOTES.length + ": " + q.name);
+    b.addEventListener("click", function () { show(i); });
+    dots.appendChild(b);
+  });
+
+  $("next").addEventListener("click", function () { show(index + 1); });
+  $("prev").addEventListener("click", function () { show(index - 1); });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); show(index + 1); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); show(index - 1); }
+  });
+
+  show(0, true);
+
+  /* ============================================================
+     LYDEN
+     Tre kilder, i rækkefølge:
+       1. media/sometimes.mp3   — din egen fil, hvis den ligger der
+       2. YouTube (skjult)      — den officielle musikvideo, kun lyden
+       3. Spotify-knap          — hvis intet af ovenstående kan lade sig gøre
+     ============================================================ */
+
+  var LOCAL_SRC = "media/sometimes.mp3";
+  var YT_ID = "xh7AYrl944Y";
+
+  var audio = null;      // HTMLAudioElement
+  var yt = null;         // YouTube-player
+  var mode = null;       // "local" | "youtube" | "link"
+
+  function fadeTo(el, target, ms) {
+    var from = el.volume, steps = 24, n = 0;
+    var t = window.setInterval(function () {
+      n++;
+      var v = from + (target - from) * (n / steps);
+      el.volume = Math.max(0, Math.min(1, v));
+      if (n >= steps) { window.clearInterval(t); }
+    }, ms / steps);
+  }
+
+  // 1) Lokal fil
+  function tryLocal() {
+    return new Promise(function (resolve) {
+      var a = new Audio();
+      a.src = LOCAL_SRC;
+      a.loop = true;
+      a.volume = 0;
+      a.preload = "auto";
+
+      var settled = false;
+      var done = function (ok) {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        if (!ok) { a.src = ""; }
+        resolve(ok);
+      };
+
+      var timer = window.setTimeout(function () { done(false); }, 3500);
+
+      a.addEventListener("error", function () { done(false); }, { once: true });
+      a.addEventListener("canplay", function () {
+        a.play().then(function () {
+          audio = a;
+          fadeTo(a, 0.62, 2600);
+          done(true);
+        }).catch(function () { done(false); });
+      }, { once: true });
+    });
+  }
+
+  // 2) YouTube — skjult afspiller, vi bruger kun lyden
+  function loadYTApi() {
+    return new Promise(function (resolve, reject) {
+      if (window.YT && window.YT.Player) { resolve(); return; }
+
+      var prev = window.onYouTubeIframeAPIReady;
+      var timer = window.setTimeout(function () { reject(new Error("timeout")); }, 6000);
+
+      window.onYouTubeIframeAPIReady = function () {
+        window.clearTimeout(timer);
+        if (typeof prev === "function") { prev(); }
+        resolve();
+      };
+
+      var s = document.createElement("script");
+      s.src = "https://www.youtube.com/iframe_api";
+      s.onerror = function () { window.clearTimeout(timer); reject(new Error("blocked")); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function tryYouTube() {
+    return loadYTApi().then(function () {
+      return new Promise(function (resolve, reject) {
+        var timer = window.setTimeout(function () { reject(new Error("no-play")); }, 8000);
+
+        yt = new window.YT.Player("yt-host", {
+          videoId: YT_ID,
+          playerVars: {
+            autoplay: 1, controls: 0, disablekb: 1, playsinline: 1,
+            modestbranding: 1, rel: 0, loop: 1, playlist: YT_ID
+          },
+          events: {
+            onReady: function (e) {
+              // Start dæmpet: browsere tillader altid lydløs afspilning.
+              // Vi skruer op straks efter — klikket på porten er stadig "friskt".
+              e.target.mute();
+              e.target.playVideo();
+              window.setTimeout(function () {
+                try {
+                  e.target.unMute();
+                  e.target.setVolume(58);
+                } catch (err) { /* ignoreres */ }
+              }, 260);
+            },
+            onStateChange: function (e) {
+              if (e.data === window.YT.PlayerState.PLAYING) {
+                window.clearTimeout(timer);
+                resolve(true);
+              }
+              if (e.data === window.YT.PlayerState.ENDED) {
+                e.target.seekTo(0);
+                e.target.playVideo();
+              }
+            },
+            onError: function () {
+              window.clearTimeout(timer);
+              reject(new Error("yt-error"));
+            }
+          }
+        });
+      });
+    });
+  }
+
+  function setPlayerUI(playing) {
+    player.classList.toggle("paused", !playing);
+  }
+
+  function startAudio() {
+    player.hidden = false;
+
+    tryLocal().then(function (ok) {
+      if (ok) {
+        mode = "local";
+        srcLabel.textContent = "Mattyeux, Princess Chelsea, Videoclub";
+        setPlayerUI(true);
+        audio.addEventListener("play", function () { setPlayerUI(true); });
+        audio.addEventListener("pause", function () { setPlayerUI(false); });
+        return;
+      }
+
+      return tryYouTube().then(function () {
+        mode = "youtube";
+        srcLabel.textContent = "Mattyeux, Princess Chelsea, Videoclub";
+        setPlayerUI(true);
+      }).catch(function () {
+        // Sidste udvej: siden kan ikke selv afspille. Så peger vi på Spotify.
+        mode = "link";
+        srcLabel.textContent = "Tryk for at åbne i Spotify";
+        setPlayerUI(false);
+      });
+    });
+  }
+
+  $("toggle").addEventListener("click", function () {
+    if (mode === "local" && audio) {
+      if (audio.paused) { audio.play(); } else { audio.pause(); }
+      return;
+    }
+
+    if (mode === "youtube" && yt) {
+      var state = yt.getPlayerState();
+      if (state === window.YT.PlayerState.PLAYING) {
+        yt.pauseVideo();
+        setPlayerUI(false);
+      } else {
+        yt.unMute();
+        yt.playVideo();
+        setPlayerUI(true);
+      }
+      return;
+    }
+
+    // mode === "link" (eller lyden er slet ikke startet endnu)
+    $("open-spotify").click();
+  });
+
+  /* ============================================================
+     PORTEN
+     ============================================================ */
+
+  function enter() {
+    gate.classList.add("gone");
+    document.body.classList.add("entered");
+    startAudio();
+    window.setTimeout(function () { $("next").focus(); }, 900);
+  }
+
+  $("enter").addEventListener("click", enter, { once: true });
+})();
+</script>
+
+</body>
+</html>

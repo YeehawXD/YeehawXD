@@ -1,0 +1,7 @@
+# Lydfiler holdes ude af repoet — se media/README.md
+media/*.mp3
+media/*.m4a
+media/*.ogg
+media/*.wav
+
+.DS_Store
