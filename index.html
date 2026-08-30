@@ -380,6 +380,20 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
 .sheet-card .shut:hover{ color: var(--ink); }
 .sheet-card a.go:focus-visible,
 .sheet-card button:focus-visible{ outline: 2px solid var(--ember); outline-offset: 3px; }
+.hjaelp{
+  text-align: left; font-family: var(--sans);
+  padding: 16px 17px; border-radius: 13px;
+  background: rgba(255,138,61,.07);
+  border: 1px solid rgba(255,138,61,.22);
+}
+.hjaelp b{ font-size: 13.5px; color: #ffdcbb; }
+.hjaelp p{ margin: 7px 0 10px; font-size: 12.5px; line-height: 1.6; color: var(--ink-dim); }
+.hjaelp ol{ margin: 0; padding-left: 19px; }
+.hjaelp li{
+  font-size: 12.5px; line-height: 1.75; color: var(--ink-dim);
+}
+.hjaelp li b{ font-size: 12.5px; color: var(--ink); }
+
 .voices{
   display: grid; gap: 6px; text-align: left;
   max-height: 40vh; overflow-y: auto;
@@ -664,10 +678,20 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
 
     <button type="button" class="go" id="v-onoff">Oplæsning: til</button>
 
-    <p class="tip">Stemmerne kommer fra din telefon, ikke fra siden. Tryk på en
-       for at høre den. De med <b>Enhanced</b> eller <b>Premium</b> lyder klart
-       bedst — mangler du dem, kan de hentes under
-       Indstillinger &rsaquo; Tilgængelighed &rsaquo; Talt indhold &rsaquo; Stemmer.</p>
+    <div class="hjaelp" id="v-hjaelp" hidden>
+      <b>Lyder den metallisk?</b>
+      <p>Så bruger din telefon en standardstemme. De er komprimerede for at
+         fylde lidt. De rigtige optagelser hentes gratis:</p>
+      <ol>
+        <li>Indstillinger &rsaquo; Tilgængelighed</li>
+        <li>Talt indhold &rsaquo; Stemmer &rsaquo; Engelsk</li>
+        <li>Hent en med <b>Enhanced</b> eller <b>Premium</b> i navnet</li>
+        <li>Kom tilbage og genindlæs siden</li>
+      </ol>
+    </div>
+
+    <p class="tip">Stemmerne kommer fra din telefon, ikke fra siden.
+       Tryk på en for at høre den med det samme.</p>
 
     <div class="voices" id="v-list"></div>
 
@@ -1316,10 +1340,11 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
         u.lang = "en-GB";
         pickVoice();
       }
-      // Kun et nøk under normalt. Trækker man længere ned, resampler
-      // syntesen stemmen, og så lyder den som en maskine.
-      u.pitch = 0.92;
-      u.rate = 0.86;    // langsomt, men ikke sløvt
+      // Rør ikke tonehøjden. Alt andet end 1,0 får syntesen til at
+      // resample stemmen, og dét er den metalliske klang. Dybden skal
+      // komme fra stemmevalget, ikke herfra.
+      u.pitch = 1;
+      u.rate = 0.9;     // tempo koster ikke kvalitet på samme måde
       u.volume = 1;
 
       // Hulens egen lyd trækker sig, mens der bliver talt
@@ -1359,6 +1384,11 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
     liste.innerHTML = "";
 
     if (!stemmer.length || !voice) { pickVoice(); }
+
+    // Har telefonen ingen af de gode stemmer, er det dét, der er problemet.
+    // Så siger vi det, i stedet for at lade brugeren tro, det er siden.
+    var harGode = stemmer.some(function (v) { return GODE.test(v.name); });
+    $("v-hjaelp").hidden = harGode;
 
     stemmer.slice(0, 24).forEach(function (v) {
       var b = document.createElement("button");
