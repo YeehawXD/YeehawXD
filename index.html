@@ -452,6 +452,9 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
 .player .icon svg{ width: 14px; height: 14px; fill: currentColor; }
 .player.paused .pause-i{ display: none; }
 .player:not(.paused) .play-i{ display: none; }
+.player.mute .on-i{ display: none; }
+.player:not(.mute) .off-i{ display: none; }
+.player.mute #voice{ color: var(--ink-faint); }
 
 .player a.icon{ text-decoration: none; }
 
@@ -584,6 +587,10 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
         <b>Sometimes</b>
         <small id="src-label">Mattyeux, Princess Chelsea, Videoclub</small>
       </div>
+      <button type="button" class="icon" id="voice" aria-label="Slå oplæsning til eller fra" aria-pressed="true">
+        <svg class="on-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8v8a4.5 4.5 0 002.5-4zM14 3.2v2.1a6.8 6.8 0 010 13.4v2.1a8.9 8.9 0 000-17.6z"/></svg>
+        <svg class="off-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3z"/><path d="M15.5 10l4 4m0-4l-4 4" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round"/></svg>
+      </button>
       <button type="button" class="icon" id="toggle" aria-label="Afspil eller pause">
         <svg class="play-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
         <svg class="pause-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
@@ -641,90 +648,105 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
   var QUOTES = [
     {
       greek: "…ὥσπερ τοῖς θαυματοποιοῖς πρὸ τῶν ἀνθρώπων πρόκειται τὰ παραφράγματα, ὑπὲρ ὧν τὰ θαύματα δεικνύασιν.",
+      en: "Imagine a screen that the showmen set up in front of people, and over its edge they let their puppets perform.",
       saying: "Som når gøglerne stiller <span class=\"lift\">et skærmbræt</span> op foran folk, og hen over kanten lader de deres figurer optræde.",
       name: "Platon", src: "Staten VII, 514b",
       note: "Han beskriver en skærm, folk sidder bundet foran og ikke kan se væk fra. Skrevet 2400 år før den første telefon."
     },
     {
       greek: "Ἄτοπον, ἔφη, λέγεις εἰκόνα καὶ δεσμώτας ἀτόπους. — Ὁμοίους ἡμῖν, ἦν δ᾽ ἐγώ.",
+      en: "A strange image, he said, and strange prisoners. — They are like us, I answered.",
       saying: "«Et mærkeligt billede,» sagde han, «og mærkelige fanger.» — <span class=\"lift\">«De ligner os,»</span> svarede jeg.",
       name: "Platon", src: "Staten VII, 515a",
       note: "Man læser om fangerne og tænker automatisk på alle andre end sig selv. Præcis dét fanger Sokrates med sit svar."
     },
     {
       greek: "Παντάπασι δή… οἱ τοιοῦτοι οὐκ ἂν ἄλλο τι νομίζοιεν τὸ ἀληθὲς ἢ τὰς τῶν σκευαστῶν σκιάς.",
+      en: "Such men would believe nothing to be real, except the shadows of the things carried past.",
       saying: "Sådanne mennesker ville ikke regne noget andet for virkeligt end <span class=\"lift\">skyggerne af de ting, man bar forbi.</span>",
       name: "Platon", src: "Staten VII, 515c",
       note: "Der skal ingen løgn til. Har du kun set én slags billeder af verden, bliver de din målestok for, hvordan verden er."
     },
     {
       greek: "ὁρῶ γὰρ ἡμᾶς οὐδὲν ὄντας ἄλλο πλὴν εἴδωλ᾽ ὅσοιπερ ζῶμεν ἢ κούφην σκιάν.",
+      en: "I see that we who live are nothing but phantoms, or a fleeting shadow.",
       saying: "Jeg ser, at vi, der lever, ikke er andet end <span class=\"lift\">skyggebilleder eller en flygtig skygge.</span>",
       name: "Sofokles", src: "Aias 125–126",
       note: "Det er ikke kun det, vi ser, der er skygger. Det er vi også — set af hinanden. Næsten alle, du kender, kender du gennem et billede."
     },
     {
       greek: "θάνατός ἐστιν ὁκόσα ἐγερθέντες ὁρέομεν, ὁκόσα δὲ εὕδοντες ὕπνος.",
+      en: "All that we see awake is death. All that we see asleep is sleep.",
       saying: "Alt hvad vi ser i vågen tilstand, er <span class=\"lift\">død.</span> Alt hvad vi ser sovende, er søvn.",
       name: "Heraklit", src: "Fragment B21",
       note: "Han vender det om: du tror, du er vågen, fordi øjnene er åbne. Heraklit siger, det er dér, søvnen er dybest."
     },
     {
       greek: "Κακοὶ μάρτυρες ἀνθρώποισιν ὀφθαλμοὶ καὶ ὦτα βαρβάρους ψυχὰς ἐχόντων.",
+      en: "Eyes and ears are bad witnesses for men whose souls do not understand the language.",
       saying: "Øjne og ører er <span class=\"lift\">dårlige vidner</span> for mennesker, hvis sjæle ikke forstår sproget.",
       name: "Heraklit", src: "Fragment B107",
       note: "Sanserne lyver ikke, de refererer bare. Har du intet at holde synet op imod, gentager du det, du fik vist, og kalder det din mening."
     },
     {
       greek: "ἐτεῇ δὲ οὐδὲν ἴδμεν· ἐν βυθῷ γὰρ ἡ ἀλήθεια.",
+      en: "In truth, we know nothing. For truth lies in an abyss.",
       saying: "I virkeligheden ved vi intet. For sandheden ligger <span class=\"lift\">i en afgrund.</span>",
       name: "Demokrit", src: "Fragment B117",
       note: "Ikke skjult af nogen — bare for langt nede til, at nogen når den. Alt du ved, fik du overleveret oppe fra overfladen."
     },
     {
       greek: "τίς δ᾽ οἶδεν εἰ τὸ ζῆν μέν ἐστι κατθανεῖν, τὸ κατθανεῖν δὲ ζῆν;",
+      en: "Who knows if to live is to be dead, and to be dead is to live?",
       saying: "Hvem ved, om det at leve er at være død — <span class=\"lift\">og det at dø er at leve?</span>",
       name: "Euripides", src: "Fragment 638",
       note: "Spørgsmålet er ikke pænt, men det er ærligt: du kan ikke træde uden for dit eget liv og tjekke, hvilken tilstand du er i."
     },
     {
       greek: "Οἷα ἂν πολλάκις νοήσῃς, τοιαύτη σοι ἔσται ἡ διάνοια· βάπτεται γὰρ ὑπὸ τῶν φαντασιῶν ἡ ψυχή.",
+      en: "Such as are your habitual thoughts, such also will be your mind. For the soul is dyed by its images.",
       saying: "Som du tænker igen og igen, sådan bliver dit sind. For <span class=\"lift\">sjælen farves af sine billeder.</span>",
       name: "Marcus Aurelius", src: "Meditationer V, 16",
       note: "Det her er den, du ledte efter. Du vælger ikke, hvad der bliver normalt for dig — det afgør, hvad du ser tit nok."
     },
     {
       greek: "…ἐκ τῶν ὁμοίων ἐνεργειῶν αἱ ἕξεις γίνονται.",
+      en: "It is from actions of like kind that our settled dispositions arise.",
       saying: "Det er <span class=\"lift\">af de handlinger, der ligner hinanden,</span> at vores faste tilbøjeligheder opstår.",
       name: "Aristoteles", src: "Den nikomacheiske etik II, 1103b",
       note: "Første gang lægger du mærke til det. Hundrede gange senere gør du ikke. Det var ikke tingen, der ændrede sig."
     },
     {
       greek: "Ταράσσει τοὺς ἀνθρώπους οὐ τὰ πράγματα, ἀλλὰ τὰ περὶ τῶν πραγμάτων δόγματα.",
+      en: "Men are not disturbed by things, but by the views they take of things.",
       saying: "Det er ikke tingene, der forstyrrer mennesker, men <span class=\"lift\">deres forestillinger om tingene.</span>",
       name: "Epiktet", src: "Håndbogen 5",
       note: "Mellem det, der sker, og hvordan du har det med det, ligger en forestilling. Den er din — og den er det eneste, du kan lave om."
     },
     {
       greek: "πᾶν ἐφήμερον, καὶ τὸ μνημονεῦον καὶ τὸ μνημονευόμενον.",
+      en: "All is ephemeral — both what remembers, and what is remembered.",
       saying: "Alt varer <span class=\"lift\">én dag</span> — både den, der husker, og det, der bliver husket.",
       name: "Marcus Aurelius", src: "Meditationer IV, 35",
       note: "Skrevet af verdens mægtigste mand i en dagbog, ingen skulle læse. Også det, du bruger din opmærksomhed på i dag, glemmer nogen igen."
     },
     {
       greek: "μὴ φῦναι τὸν ἅπαντα νικᾷ λόγον· τὸ δ᾽, ἐπεὶ φανῇ, βῆναι κεῖθεν ὅθεν περ ἥκει πολὺ δεύτερον.",
+      en: "Not to be born surpasses every reckoning. But once he has appeared, the next best is to go back, as swiftly as he can, where he came from.",
       saying: "<span class=\"lift\">Aldrig at være født</span> overgår enhver anden tanke. Men er man først kommet til syne, er det næstbedste at vende hurtigst muligt tilbage, hvor man kom fra.",
       name: "Sofokles", src: "Oidipus i Kolonos 1224–1227",
       note: "Det mørkeste, de efterlod os. Sofokles var over 90, og lod et kor synge det til en blind, forvist olding."
     },
     {
       greek: "…τὸν ἐπιχειροῦντα λύειν τε καὶ ἀνάγειν, εἴ πως ἐν ταῖς χερσὶ δύναιντο λαβεῖν καὶ ἀποκτείνειν, ἀποκτεινύναι ἄν;",
+      en: "And the one who tried to free them and lead them up — would they not kill him, if they could lay their hands on him?",
       saying: "Og den, der prøvede at løsne dem og føre dem op — <span class=\"lift\">ville de ikke slå ham ihjel,</span> hvis de kunne få fat i ham?",
       name: "Platon", src: "Staten VII, 517a",
       note: "Sådan slutter lignelsen. Den, der kommer tilbage og siger at det var skygger, bliver ikke takket. Sokrates blev henrettet få år før."
     },
     {
       greek: "Τελευταῖον δὴ οἶμαι τὸν ἥλιον… αὐτὸν καθ᾽ αὑτὸν ἐν τῇ αὑτοῦ χώρᾳ δύναιτ᾽ ἂν κατιδεῖν καὶ θεάσασθαι οἷός ἐστιν.",
+      en: "At last he would be able to look upon the sun itself — not reflections in water, nor on alien ground, but the sun itself, in its own place, as it is.",
       saying: "Til sidst ville han kunne se solen selv — ikke som genskin i vand, men <span class=\"lift\">solen selv, på sin egen plads, som den er.</span>",
       name: "Platon", src: "Staten VII, 516b",
       note: "Han bliver blændet først og kan ingenting se. Platon lover ikke, det er rart at komme ud — kun at det kan lade sig gøre, og at ingen kan gøre det for dig."
@@ -790,6 +812,7 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
       if (vp && vp.scrollTop) { vp.scrollTop = 0; }
       card.classList.remove("out");
       swapping = false;
+      narrate(index);
     }, 500);
   }
 
@@ -1159,6 +1182,117 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
   });
 
   /* ============================================================
+     OPLÆSNINGEN
+
+     Browserens egen talesyntese. Den henter intet og virker derfor
+     også her, hvor alt udefra er lukket. Vi vælger den dybeste
+     engelske stemme, systemet har, og sætter tonelejet ned og tempoet
+     op i en langsommere gænge, så det lyder som nogen, der læser op —
+     ikke som en oplæser af togtider.
+     ============================================================ */
+
+  var synth = window.speechSynthesis || null;
+  var voice = null, narrating = true;
+
+  // Rækkefølgen er de stemmer, der plejer at være dybest og mindst maskinelle
+  var HELST = ["daniel", "arthur", "alex", "oliver", "aaron", "google uk english male",
+               "microsoft guy", "microsoft ryan", "microsoft david", "rishi", "gordon"];
+
+  function pickVoice() {
+    if (!synth) return;
+    var alle = synth.getVoices();
+    if (!alle.length) return;
+
+    var engelsk = alle.filter(function (v) { return /^en(-|_|$)/i.test(v.lang); });
+    if (!engelsk.length) engelsk = alle;
+
+    for (var i = 0; i < HELST.length; i++) {
+      for (var j = 0; j < engelsk.length; j++) {
+        if (engelsk[j].name.toLowerCase().indexOf(HELST[i]) !== -1) {
+          voice = engelsk[j];
+          return;
+        }
+      }
+    }
+    // Ellers: britisk før amerikansk, det klæder teksten bedre
+    var gb = engelsk.filter(function (v) { return /en[-_]GB/i.test(v.lang); });
+    voice = (gb[0] || engelsk[0]);
+  }
+
+  if (synth) {
+    pickVoice();
+    if (typeof synth.onvoiceschanged !== "undefined") {
+      synth.onvoiceschanged = pickVoice;
+    }
+  }
+
+  function narrate(i) {
+    if (!synth || !narrating) return;
+    var tekst = QUOTES[i] && QUOTES[i].en;
+    if (!tekst) return;
+
+    synth.cancel();
+
+    // Et kort ophold: cancel() og speak() i samme åndedrag driller nogle browsere
+    window.setTimeout(function () {
+      if (!narrating) return;
+      var u = new SpeechSynthesisUtterance(tekst);
+
+      // En stemmereference kan blive ubrugelig — fx når onvoiceschanged
+      // skifter listen ud under os. Sætter vi den blindt, kaster den, og så
+      // bliver der aldrig talt igen. Falder hellere tilbage på systemets egen.
+      try {
+        if (voice) { u.voice = voice; u.lang = voice.lang; }
+        else { u.lang = "en-GB"; }
+      } catch (err) {
+        voice = null;
+        u.lang = "en-GB";
+      }
+      u.pitch = 0.55;   // dybt
+      u.rate = 0.82;    // langsomt, men ikke sløvt
+      u.volume = 1;
+
+      // Hulens egen lyd trækker sig, mens der bliver talt
+      u.onstart = function () { duck(true); };
+      u.onend = function () { duck(false); };
+      u.onerror = function () { duck(false); };
+
+      synth.speak(u);
+    }, 90);
+  }
+
+  function duck(ned) {
+    if (!ctx || !master) return;
+    var maal = ned ? 0.05 : 0.15;
+    if (player.classList.contains("paused")) return;
+    master.gain.cancelScheduledValues(ctx.currentTime);
+    master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+    master.gain.linearRampToValueAtTime(maal, ctx.currentTime + 0.5);
+  }
+
+  function setNarrating(on) {
+    narrating = on;
+    player.classList.toggle("mute", !on);
+    $("voice").setAttribute("aria-pressed", on ? "true" : "false");
+    if (!on && synth) { synth.cancel(); duck(false); }
+    try { window.localStorage.setItem("hulen-oplaesning", on ? "1" : "0"); } catch (e) {}
+  }
+
+  try {
+    if (window.localStorage.getItem("hulen-oplaesning") === "0") { narrating = false; }
+  } catch (e) {}
+
+  if (!synth) {
+    $("voice").hidden = true;
+  } else {
+    setNarrating(narrating);
+    $("voice").addEventListener("click", function () {
+      setNarrating(!narrating);
+      if (narrating) { narrate(index); }
+    });
+  }
+
+  /* ============================================================
      PORTEN
      ============================================================ */
 
@@ -1166,6 +1300,7 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
     gate.classList.add("gone");
     document.body.classList.add("entered");
     startAudio();
+    narrate(index);
     window.setTimeout(function () { $("next").focus(); }, 900);
   }
 
