@@ -344,23 +344,29 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
 }
 .sheet-card a.go, .sheet-card button{
   appearance: none; cursor: pointer; display: block; width: 100%;
+  touch-action: manipulation; -webkit-tap-highlight-color: rgba(255,138,61,.25);
   font-family: var(--sans); font-size: 12.5px; font-weight: 500;
   letter-spacing: .14em; text-transform: uppercase; text-align: center;
   padding: 15px 18px; border-radius: 999px; text-decoration: none;
   transition: background .25s, border-color .25s, color .25s;
 }
-.sheet-card a.go{
+.sheet-card .go{
   color: #08120c; background: #1ed760; border: 1px solid #1ed760;
 }
-.sheet-card a.go:hover{ background: #3be97a; border-color: #3be97a; }
-.sheet-card a.alt{
-  color: var(--ink); background: rgba(232,226,216,.06);
-  border: 1px solid rgba(232,226,216,.18);
-}
-.sheet-card a.alt:hover{ background: rgba(232,226,216,.13); border-color: rgba(232,226,216,.4); }
+.sheet-card .go:hover{ background: #3be97a; border-color: #3be97a; }
 .sheet-card .tip{
-  font-size: 12px; line-height: 1.6; color: var(--ink-faint);
+  margin: 0; font-family: var(--sans);
+  font-size: 12px; line-height: 1.65; color: var(--ink-faint);
 }
+.sheet-card .tip.big{
+  font-size: 14px; line-height: 1.8; color: var(--ink-dim);
+  padding: 15px 12px; border-radius: 12px;
+  background: rgba(232,226,216,.04);
+  border: 1px solid rgba(232,226,216,.09);
+}
+.sheet-card .tip.big b{ font-size: 17px; color: var(--ink); letter-spacing: .01em; }
+.sheet-card .tip a{ color: var(--ink-dim); text-underline-offset: 3px; }
+.sheet-card .tip a:hover{ color: var(--ink); }
 .sheet-card .tip b{ color: var(--ink-dim); font-weight: 600; }
 .sheet-card .copy{
   color: var(--ink); background: rgba(232,226,216,.06);
@@ -595,23 +601,27 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
   <p class="kicker">De har siddet der hele livet og set skygger blive kastet op på væggen. De har aldrig set andet. Derfor er skyggerne virkeligheden.</p>
   <button type="button" class="enter" id="enter">Træd ind i hulen</button>
   <a class="gate-link" href="https://open.spotify.com/track/5PigCfYuaTai3cDdVZU4nL"
-     target="_blank" rel="noopener">Start «Sometimes» i din Spotify først</a>
+     target="_blank" rel="noopener">Vil du have sangen på? Start den i Spotify</a>
   <p class="fine" id="gate-fine">Med lyd &middot; Platon, Staten VII</p>
 </div>
 
 <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-h">
   <div class="sheet-card">
-    <h2 id="sheet-h">Start musikken selv</h2>
-    <p>Siden må ikke afspille sangen for dig, og den må ikke åbne din Spotify.
-       Start <b>Sometimes</b> i Spotify, og kom tilbage hertil — den spiller
-       roligt videre i baggrunden, mens du går gennem hulen.</p>
-    <a class="go" id="sheet-app" href="spotify:track:5PigCfYuaTai3cDdVZU4nL">Prøv at åbne Spotify-appen</a>
-    <a class="alt" id="sheet-go" href="https://open.spotify.com/track/5PigCfYuaTai3cDdVZU4nL"
-       target="_blank" rel="noopener">Prøv i browseren</a>
-    <button type="button" class="copy" id="sheet-copy">Kopiér link</button>
-    <code class="sheet-url">https://open.spotify.com/track/5PigCfYuaTai3cDdVZU4nL</code>
-    <p class="tip">Gør knapperne ingenting, er det sandkassen, der blokerer dem.
-       Søg efter <b>Sometimes &middot; Mattyeux</b> i din Spotify i stedet.</p>
+    <h2 id="sheet-h">Sangen skal startes i Spotify</h2>
+    <p>Hulen spiller sin egen lyd. <b>Sometimes</b> er ophavsretligt beskyttet
+       og kan ikke afspilles herinde — start den i din Spotify, så lægger den
+       sig oven på.</p>
+
+    <p class="tip big">Søg efter<br><b>Sometimes &middot; Mattyeux</b></p>
+
+    <button type="button" class="go" id="sheet-copy">Kopiér link til sangen</button>
+    <code class="sheet-url" id="sheet-url">https://open.spotify.com/track/5PigCfYuaTai3cDdVZU4nL</code>
+
+    <p class="tip">Links ud af siden virker ikke alle steder, men prøv gerne:
+       <a id="sheet-app" href="spotify:track:5PigCfYuaTai3cDdVZU4nL">Spotify-appen</a>
+       eller <a id="sheet-go" href="https://open.spotify.com/track/5PigCfYuaTai3cDdVZU4nL"
+       target="_blank" rel="noopener">browseren</a>.</p>
+
     <button type="button" class="shut" id="sheet-shut">Luk</button>
   </div>
 </div>
@@ -732,6 +742,7 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
       elName = $("q-name"), elSrc = $("q-src"), elNote = $("q-note");
   var fill = $("fill"), count = $("count");
   var player = $("player"), srcLabel = $("src-label"), sheet = $("sheet");
+  var trackName = document.querySelector(".track b");
 
   var SPOTIFY_URL = "https://open.spotify.com/track/5PigCfYuaTai3cDdVZU4nL";
 
@@ -927,11 +938,97 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
     });
   }
 
+  /* ------------------------------------------------------------
+     Hulens egen lyd
+
+     Siden kan ikke afspille "Sometimes" alle steder — den er
+     ophavsretligt beskyttet og skal hentes udefra, og det må en
+     sandkasse ikke. Men lyd kan browseren selv lave: en dyb grundtone
+     med to let forstemte oscillatorer, der svæver mod hinanden, og
+     hvid støj gennem et lavpasfilter, der ånder langsomt som ilden.
+     Det henter intet, så det virker overalt.
+     ------------------------------------------------------------ */
+
+  var ctx = null, master = null;
+
+  function startAmbience() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+
+    try {
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = 0;
+      master.connect(ctx.destination);
+
+      // Grundtonen. De to nederste ligger 0,35 Hz fra hinanden, så de
+      // svæver ind og ud af hinanden med små ti sekunders mellemrum.
+      [[55, 0.17], [55.35, 0.17], [82.5, 0.05]].forEach(function (par) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.value = par[0];
+        g.gain.value = par[1];
+        o.connect(g); g.connect(master);
+        o.start();
+      });
+
+      // Susen: fire sekunders hvid støj i løkke
+      var n = ctx.sampleRate * 4;
+      var buf = ctx.createBuffer(1, n, ctx.sampleRate);
+      var data = buf.getChannelData(0);
+      for (var i = 0; i < n; i++) { data[i] = (Math.random() * 2 - 1) * 0.5; }
+
+      var noise = ctx.createBufferSource();
+      noise.buffer = buf;
+      noise.loop = true;
+
+      var lp = ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = 300;
+      lp.Q.value = 0.7;
+
+      var ng = ctx.createGain();
+      ng.gain.value = 0.1;
+
+      noise.connect(lp); lp.connect(ng); ng.connect(master);
+      noise.start();
+
+      // Vejrtrækningen i filteret — et åndedrag på cirka seksten sekunder
+      var lfo = ctx.createOscillator(), lfoGain = ctx.createGain();
+      lfo.frequency.value = 0.062;
+      lfoGain.gain.value = 165;
+      lfo.connect(lfoGain); lfoGain.connect(lp.frequency);
+      lfo.start();
+
+      if (ctx.state === "suspended") { ctx.resume(); }
+      master.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 5);
+      return true;
+    } catch (err) {
+      ctx = null; master = null;
+      return false;
+    }
+  }
+
+  function ambienceOn(on) {
+    if (!ctx || !master) return;
+    if (on && ctx.state === "suspended") { ctx.resume(); }
+    master.gain.cancelScheduledValues(ctx.currentTime);
+    master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+    master.gain.linearRampToValueAtTime(on ? 0.15 : 0, ctx.currentTime + 0.8);
+  }
+
   function setPlayerUI(playing) {
     player.classList.toggle("paused", !playing);
   }
 
-  function toLinkMode() {
+  function toAmbience() {
+    if (startAmbience()) {
+      mode = "ambient";
+      trackName.textContent = "Hulen";
+      srcLabel.textContent = "Sidens egen lyd";
+      setPlayerUI(true);
+      return;
+    }
     mode = "link";
     srcLabel.textContent = "Tryk for at åbne i Spotify";
     setPlayerUI(false);
@@ -940,7 +1037,7 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
   function startAudio() {
     player.hidden = false;
 
-    if (AUDIO_MODE === "link") { toLinkMode(); return; }
+    if (AUDIO_MODE === "link") { toAmbience(); return; }
 
     tryLocal().then(function (ok) {
       if (ok) {
@@ -957,8 +1054,8 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
         srcLabel.textContent = "Mattyeux, Princess Chelsea, Videoclub";
         setPlayerUI(true);
       }).catch(function () {
-        // Sidste udvej: siden kan ikke selv afspille. Så peger vi på Spotify.
-        toLinkMode();
+        // Kan sangen ikke hentes, spiller hulen sin egen lyd i stedet
+        toAmbience();
       });
     });
   }
@@ -966,6 +1063,13 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
   $("toggle").addEventListener("click", function () {
     if (mode === "local" && audio) {
       if (audio.paused) { audio.play(); } else { audio.pause(); }
+      return;
+    }
+
+    if (mode === "ambient") {
+      var spiller = !player.classList.contains("paused");
+      ambienceOn(!spiller);
+      setPlayerUI(!spiller);
       return;
     }
 
@@ -997,7 +1101,7 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
 
   function openSheet() {
     sheet.hidden = false;
-    $("sheet-app").focus();
+    $("sheet-copy").focus();
   }
 
   function closeSheet() {
@@ -1027,13 +1131,13 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
     var btn = this;
     var sig = function (tekst) {
       btn.textContent = tekst;
-      window.setTimeout(function () { btn.textContent = "Kopiér link"; }, 2200);
+      window.setTimeout(function () { btn.textContent = "Kopiér link til sangen"; }, 2200);
     };
 
     // Lykkes udklipsholderen ikke, markerer vi adressen, så den kan kopieres i hånden
     var marker = function () {
       try {
-        var el = document.querySelector(".sheet-url");
+        var el = $("sheet-url");
         var r = document.createRange();
         r.selectNodeContents(el);
         var sel = window.getSelection();
