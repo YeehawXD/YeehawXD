@@ -380,45 +380,6 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
 .sheet-card .shut:hover{ color: var(--ink); }
 .sheet-card a.go:focus-visible,
 .sheet-card button:focus-visible{ outline: 2px solid var(--ember); outline-offset: 3px; }
-.hjaelp{
-  text-align: left; font-family: var(--sans);
-  padding: 16px 17px; border-radius: 13px;
-  background: rgba(255,138,61,.07);
-  border: 1px solid rgba(255,138,61,.22);
-}
-.hjaelp b{ font-size: 13.5px; color: #ffdcbb; }
-.hjaelp p{ margin: 7px 0 10px; font-size: 12.5px; line-height: 1.6; color: var(--ink-dim); }
-.hjaelp ol{ margin: 0; padding-left: 19px; }
-.hjaelp li{
-  font-size: 12.5px; line-height: 1.75; color: var(--ink-dim);
-}
-.hjaelp li b{ font-size: 12.5px; color: var(--ink); }
-
-.voices{
-  display: grid; gap: 6px; text-align: left;
-  max-height: 40vh; overflow-y: auto;
-  scrollbar-width: thin;
-}
-.sheet-card .voices button{
-  width: 100%; text-align: left;
-  font-size: 13.5px; font-weight: 400;
-  letter-spacing: 0; text-transform: none;
-  padding: 12px 14px; border-radius: 11px;
-  color: var(--ink-dim);
-  background: rgba(232,226,216,.04);
-  border: 1px solid rgba(232,226,216,.1);
-}
-.sheet-card .voices button:hover{ background: rgba(232,226,216,.1); color: var(--ink); }
-.sheet-card .voices button[aria-pressed="true"]{
-  color: #fff; border-color: rgba(255,138,61,.65); background: rgba(255,138,61,.1);
-}
-.voices .tag{
-  display: inline-block; margin-left: 7px;
-  font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--ember);
-}
-.voices .lang{ font-size: 10.5px; color: var(--ink-faint); letter-spacing: .06em; }
-
 .sheet-url{
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px; color: var(--ink-faint); word-break: break-all;
@@ -669,33 +630,6 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
        target="_blank" rel="noopener">browseren</a>.</p>
 
     <button type="button" class="shut" id="sheet-shut">Luk</button>
-  </div>
-</div>
-
-<div class="sheet" id="vsheet" hidden role="dialog" aria-modal="true" aria-labelledby="vsheet-h">
-  <div class="sheet-card">
-    <h2 id="vsheet-h">Stemmen</h2>
-
-    <button type="button" class="go" id="v-onoff">Oplæsning: til</button>
-
-    <div class="hjaelp" id="v-hjaelp" hidden>
-      <b>Lyder den metallisk?</b>
-      <p>Så bruger din telefon en standardstemme. De er komprimerede for at
-         fylde lidt. De rigtige optagelser hentes gratis:</p>
-      <ol>
-        <li>Indstillinger &rsaquo; Tilgængelighed</li>
-        <li>Talt indhold &rsaquo; Stemmer &rsaquo; Engelsk</li>
-        <li>Hent en med <b>Enhanced</b> eller <b>Premium</b> i navnet</li>
-        <li>Kom tilbage og genindlæs siden</li>
-      </ol>
-    </div>
-
-    <p class="tip">Stemmerne kommer fra din telefon, ikke fra siden.
-       Tryk på en for at høre den med det samme.</p>
-
-    <div class="voices" id="v-list"></div>
-
-    <button type="button" class="shut" id="v-shut">Luk</button>
   </div>
 </div>
 
@@ -1151,25 +1085,30 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
 
   $("toggle").addEventListener("click", function () {
     if (mode === "local" && audio) {
-      if (audio.paused) { audio.play(); } else { audio.pause(); }
+      if (audio.paused) { pauseret = false; audio.play(); }
+      else { pauseret = true; audio.pause(); stopTale(); }
       return;
     }
 
     if (mode === "ambient") {
       var spiller = !player.classList.contains("paused");
+      pauseret = spiller;
       ambienceOn(!spiller);
       setPlayerUI(!spiller);
       // Pause betyder stilhed — også midt i en sætning
-      if (spiller && synth) { synth.cancel(); }
+      if (spiller) { stopTale(); }
       return;
     }
 
     if (mode === "youtube" && yt) {
       var state = yt.getPlayerState();
       if (state === window.YT.PlayerState.PLAYING) {
+        pauseret = true;
         yt.pauseVideo();
         setPlayerUI(false);
+        stopTale();
       } else {
+        pauseret = false;
         yt.unMute();
         yt.playVideo();
         setPlayerUI(true);
@@ -1252,124 +1191,90 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
   /* ============================================================
      OPLÆSNINGEN
 
-     Browserens egen talesyntese. Den henter intet og virker derfor
-     også her, hvor alt udefra er lukket. Vi vælger den dybeste
-     engelske stemme, systemet har, og sætter tonelejet ned og tempoet
-     op i en langsommere gænge, så det lyder som nogen, der læser op —
-     ikke som en oplæser af togtider.
+     Rigtige optagelser, lavet på forhånd med en neural stemme, og
+     leveret med siden. Telefonens egen talesyntese bruges kun, hvis
+     lydfilerne ikke kan afspilles — den lyder metallisk, fordi
+     standardstemmerne er komprimerede, og det kan siden ikke rette.
+
+     I den hostede udgave ligger filerne i tale/. Skal siden være
+     selvstændig, lægges de ind i TALE som data-URI'er.
      ============================================================ */
 
+  var TALE = null;
+
+  function taleSrc(i) {
+    if (TALE && TALE[i]) return TALE[i];
+    return "tale/" + (i < 9 ? "0" : "") + (i + 1) + ".mp3";
+  }
+
+  var narrating = true;
+  var pauseret = false;   // sat af pauseknappen, ikke af opstartsforløbet
+  var taleAudio = null;
   var synth = window.speechSynthesis || null;
-  var voice = null, narrating = true;
 
-  var stemmer = [];   // de engelske stemmer, sorteret bedst først
-
-  // De ord, producenterne sætter på deres gode stemmer. Dem vil vi have:
-  // de er optaget af rigtige mennesker frem for sat sammen af stumper.
-  var GODE = /enhanced|premium|neural|natural|siri|multilingual/i;
-
-  // Stemmer der er dybe i forvejen. Bedre end at trække en lys stemme ned —
-  // det resampler den, og dét er den metalliske klang.
-  var DYBE = ["daniel", "arthur", "alex", "oliver", "aaron", "gordon", "reed",
-              "google uk english male", "microsoft guy", "microsoft ryan",
-              "microsoft david", "rishi", "tom", "fred"];
-
-  function score(v) {
-    var navn = v.name.toLowerCase();
-    var p = 0;
-    if (GODE.test(navn)) p += 100;                 // kvalitet vejer tungest
-    for (var i = 0; i < DYBE.length; i++) {
-      if (navn.indexOf(DYBE[i]) !== -1) { p += 60 - i; break; }
+  function stopTale() {
+    if (taleAudio) {
+      try { taleAudio.pause(); } catch (e) {}
+      taleAudio = null;
     }
-    if (/en[-_]GB/i.test(v.lang)) p += 10;         // britisk klæder teksten
-    if (v.localService === false) p += 5;          // netstemmer er tit bedre
-    return p;
-  }
-
-  function pickVoice() {
-    if (!synth) return;
-    var alle = synth.getVoices();
-    if (!alle.length) return;
-
-    var engelsk = alle.filter(function (v) { return /^en(-|_|$)/i.test(v.lang); });
-    if (!engelsk.length) engelsk = alle;
-
-    stemmer = engelsk.slice().sort(function (a, b) { return score(b) - score(a); });
-
-    // Har brugeren selv valgt en, holder vi fast i den
-    var gemt = null;
-    try { gemt = window.localStorage.getItem("hulen-stemme"); } catch (e) {}
-    if (gemt) {
-      for (var i = 0; i < stemmer.length; i++) {
-        if (stemmer[i].name === gemt) { voice = stemmer[i]; return; }
-      }
-    }
-    voice = stemmer[0];
-  }
-
-  if (synth) {
-    pickVoice();
-    if (typeof synth.onvoiceschanged !== "undefined") {
-      synth.onvoiceschanged = pickVoice;
-    }
+    if (synth) { try { synth.cancel(); } catch (e) {} }
+    duck(false);
   }
 
   function narrate(i) {
+    if (!narrating || pauseret) return;
+
+    stopTale();
+
+    var a = new Audio();
+    a.src = taleSrc(i);
+    a.preload = "auto";
+    taleAudio = a;
+
+    var faldTilbage = function () {
+      if (taleAudio !== a) return;   // et nyere citat har overhalet
+      taleAudio = null;
+      duck(false);
+      synthNarrate(i);
+    };
+
+    a.addEventListener("playing", function () { duck(true); });
+    a.addEventListener("ended", function () { if (taleAudio === a) { duck(false); } });
+    a.addEventListener("error", faldTilbage);
+
+    var forsog = a.play();
+    if (forsog && forsog.catch) { forsog.catch(faldTilbage); }
+  }
+
+  /* Nødløsningen: telefonens egen stemme. Tonehøjden røres ikke —
+     alt andet end 1,0 får syntesen til at resample og lyde metallisk. */
+  function synthNarrate(i) {
     if (!synth || !narrating) return;
-    if (player.classList.contains("paused")) return;
     var tekst = QUOTES[i] && QUOTES[i].en;
     if (!tekst) return;
 
-    synth.cancel();
-
-    // Et kort ophold: cancel() og speak() i samme åndedrag driller nogle browsere
-    window.setTimeout(function () {
-      if (!narrating) return;
-      var u = new SpeechSynthesisUtterance(tekst);
-
-      // En stemmereference kan blive ubrugelig — fx når onvoiceschanged
-      // skifter listen ud under os. Sætter vi den blindt, kaster den, og så
-      // bliver der aldrig talt igen. Falder hellere tilbage på systemets egen.
-      try {
-        if (voice) { u.voice = voice; u.lang = voice.lang; }
-        else { u.lang = "en-GB"; }
-      } catch (err) {
-        // Referencen var forældet. Læs op med systemets egen denne gang,
-        // og hent en frisk fra listen, så valget ikke er tabt for altid.
-        voice = null;
-        u.lang = "en-GB";
-        pickVoice();
-      }
-      // Rør ikke tonehøjden. Alt andet end 1,0 får syntesen til at
-      // resample stemmen, og dét er den metalliske klang. Dybden skal
-      // komme fra stemmevalget, ikke herfra.
-      u.pitch = 1;
-      u.rate = 0.9;     // tempo koster ikke kvalitet på samme måde
-      u.volume = 1;
-
-      // Hulens egen lyd trækker sig, mens der bliver talt
-      u.onstart = function () { duck(true); };
-      u.onend = function () { duck(false); };
-      u.onerror = function () { duck(false); };
-
-      synth.speak(u);
-    }, 90);
+    var u = new SpeechSynthesisUtterance(tekst);
+    u.lang = "en-GB";
+    u.pitch = 1;
+    u.rate = 0.9;
+    u.onstart = function () { duck(true); };
+    u.onend = function () { duck(false); };
+    u.onerror = function () { duck(false); };
+    synth.speak(u);
   }
 
   function duck(ned) {
-    if (!ctx || !master) return;
-    var maal = ned ? 0.05 : 0.15;
-    if (player.classList.contains("paused")) return;
+    if (!ctx || !master || pauseret) return;
     master.gain.cancelScheduledValues(ctx.currentTime);
     master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
-    master.gain.linearRampToValueAtTime(maal, ctx.currentTime + 0.5);
+    master.gain.linearRampToValueAtTime(ned ? 0.05 : 0.15, ctx.currentTime + 0.5);
   }
 
   function setNarrating(on) {
     narrating = on;
     player.classList.toggle("mute", !on);
     $("voice").setAttribute("aria-pressed", on ? "true" : "false");
-    if (!on && synth) { synth.cancel(); duck(false); }
+    if (!on) { stopTale(); }
     try { window.localStorage.setItem("hulen-oplaesning", on ? "1" : "0"); } catch (e) {}
   }
 
@@ -1377,73 +1282,12 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
     if (window.localStorage.getItem("hulen-oplaesning") === "0") { narrating = false; }
   } catch (e) {}
 
-  var vsheet = $("vsheet");
+  setNarrating(narrating);
 
-  function tegnStemmer() {
-    var liste = $("v-list");
-    liste.innerHTML = "";
-
-    if (!stemmer.length || !voice) { pickVoice(); }
-
-    // Har telefonen ingen af de gode stemmer, er det dét, der er problemet.
-    // Så siger vi det, i stedet for at lade brugeren tro, det er siden.
-    var harGode = stemmer.some(function (v) { return GODE.test(v.name); });
-    $("v-hjaelp").hidden = harGode;
-
-    stemmer.slice(0, 24).forEach(function (v) {
-      var b = document.createElement("button");
-      b.type = "button";
-      b.setAttribute("aria-pressed", voice && v.name === voice.name ? "true" : "false");
-
-      var pæn = v.name.replace(/\s*\((Enhanced|Premium|Neural|Natural)\)/i, "");
-      var mærke = GODE.test(v.name) ? '<span class="tag">Enhanced</span>' : "";
-      b.innerHTML = pæn + mærke + '<br><span class="lang">' + v.lang + "</span>";
-
-      b.addEventListener("click", function () {
-        voice = v;
-        try { window.localStorage.setItem("hulen-stemme", v.name); } catch (e) {}
-        Array.prototype.forEach.call(liste.children, function (o) {
-          o.setAttribute("aria-pressed", "false");
-        });
-        b.setAttribute("aria-pressed", "true");
-        if (!narrating) { setNarrating(true); }
-        narrate(index);          // hør den med det samme
-      });
-
-      liste.appendChild(b);
-    });
-  }
-
-  function opdaterOnOff() {
-    $("v-onoff").textContent = "Oplæsning: " + (narrating ? "til" : "fra");
-  }
-
-  if (!synth) {
-    $("voice").hidden = true;
-  } else {
-    setNarrating(narrating);
-
-    // Tryk åbner panelet — der er både til/fra og valg af stemme
-    $("voice").addEventListener("click", function () {
-      tegnStemmer();
-      opdaterOnOff();
-      vsheet.hidden = false;
-    });
-
-    $("v-onoff").addEventListener("click", function () {
-      setNarrating(!narrating);
-      opdaterOnOff();
-      if (narrating) { narrate(index); }
-    });
-
-    $("v-shut").addEventListener("click", function () { vsheet.hidden = true; });
-    vsheet.addEventListener("click", function (e) {
-      if (e.target === vsheet) { vsheet.hidden = true; }
-    });
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && !vsheet.hidden) { vsheet.hidden = true; }
-    });
-  }
+  $("voice").addEventListener("click", function () {
+    setNarrating(!narrating);
+    if (narrating) { narrate(index); }
+  });
 
   /* ============================================================
      PORTEN

@@ -19,10 +19,30 @@ Pages, Netlify, Vercel eller en hvilken som helst webserver. På GitHub Pages:
 **Settings → Pages → Source: Deploy from a branch**, vælg denne branch og
 mappen `/ (root)`.
 
+## Oplæsningen
+
+En dyb britisk stemme læser citatet op, når man træder ind og hver gang man går
+videre. Det er rigtige optagelser, lavet på forhånd med en neural stemme og
+lagt i `tale/` — ikke browserens talesyntese, som lyder metallisk, fordi
+systemernes standardstemmer er komprimerede.
+
+Filerne er genereret med `edge-tts` og stemmen `en-GB-RyanNeural` ved `-10%`
+tempo og `-3Hz`, ud fra den engelske linje på hvert citat. Skal de laves om,
+er teksterne feltet `en` i citatlisten. Højttalerknappen slår oplæsningen fra
+og til, og valget huskes. Kan filerne ikke afspilles, falder siden tilbage på
+browserens egen stemme.
+
 ## Lyden
 
 Browsere må ikke starte lyd af sig selv, derfor det første klik ("Træd ind i
 hulen"). Bagefter forsøger siden tre kilder i rækkefølge:
+
+Hulen spiller sin egen baggrundslyd, som browseren selv laver: en dyb
+grundtone af to oscillatorer sat 0,35 Hz fra hinanden, så de svæver mod
+hinanden, og hvid støj gennem et lavpasfilter med et langsomt åndedrag. Den
+henter intet og virker derfor overalt. Den trækker sig, mens der bliver læst op.
+
+Oven på den kan selve sangen spille. Siden forsøger i rækkefølge:
 
 1. `media/sometimes.mp3` — din egen fil, hvis du har lagt en (se `media/README.md`)
 2. Den officielle musikvideo på YouTube, afspillet skjult, så kun lyden høres
