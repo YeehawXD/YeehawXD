@@ -250,7 +250,7 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
   align-self: center; justify-self: center;
   width: min(70ch, 100%);
   text-align: center;
-  transition: opacity .85s ease, transform .85s ease, filter .85s ease;
+  transition: opacity .62s ease, transform .62s ease, filter .62s ease;
 }
 .card.out{ opacity: 0; transform: translateY(14px); filter: blur(6px); }
 
@@ -300,20 +300,78 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
   padding-top: 26px;
 }
 
-.dots{ display: flex; gap: 9px; }
-.dots button{
-  appearance: none; cursor: pointer; padding: 8px 3px;
-  background: none; border: 0; line-height: 0;
+.progress{ display: flex; align-items: center; gap: 13px; width: min(320px, 76vw); }
+.progress .track{
+  flex: 1; height: 2px; border-radius: 2px;
+  background: rgba(232,226,216,.16);
+  overflow: hidden;
 }
-.dots span{
-  display: block; width: 26px; height: 2px; border-radius: 2px;
-  background: rgba(232,226,216,.2);
-  transition: background .45s ease, width .45s ease;
+.progress .fill{
+  height: 100%; width: 0; border-radius: 2px;
+  background: var(--ember);
+  transition: width .6s cubic-bezier(.4,0,.2,1);
 }
-.dots button[aria-current="true"] span{ width: 40px; background: var(--ember); }
-.dots button:focus-visible{ outline: 2px solid var(--ember); outline-offset: 2px; border-radius: 6px; }
+.progress .count{
+  font-family: var(--sans); font-size: 11px; letter-spacing: .13em;
+  color: var(--ink-faint); font-variant-numeric: tabular-nums;
+  min-width: 5ch; text-align: right;
+}
 
 .nav{ display: flex; align-items: center; gap: 12px; }
+
+/* Åbn-sangen-panelet. Nogle indlejringer må ikke åbne nye faner, og et link
+   der lydløst intet gør er værre end ingen knap — panelet viser sig altid. */
+.sheet{
+  position: fixed; inset: 0; z-index: 60;
+  display: grid; place-items: center; padding: var(--pad);
+  background: rgba(4,5,9,.78); backdrop-filter: blur(6px);
+}
+.sheet-card{
+  width: min(400px, 100%);
+  display: grid; gap: 15px; justify-items: stretch;
+  padding: clamp(24px, 5vw, 34px);
+  border-radius: 20px;
+  border: 1px solid rgba(232,226,216,.14);
+  background: linear-gradient(180deg, #14151d, #0c0d13);
+  text-align: center;
+}
+.sheet-card h2{
+  margin: 0; font-size: 25px; font-weight: 400; color: var(--ink);
+}
+.sheet-card p{
+  margin: 0; font-family: var(--sans); font-size: 13.5px; line-height: 1.65;
+  color: var(--ink-dim);
+}
+.sheet-card a.go, .sheet-card button{
+  appearance: none; cursor: pointer; display: block; width: 100%;
+  font-family: var(--sans); font-size: 12.5px; font-weight: 500;
+  letter-spacing: .14em; text-transform: uppercase; text-align: center;
+  padding: 15px 18px; border-radius: 999px; text-decoration: none;
+  transition: background .25s, border-color .25s, color .25s;
+}
+.sheet-card a.go{
+  color: #08120c; background: #1ed760; border: 1px solid #1ed760;
+}
+.sheet-card a.go:hover{ background: #3be97a; border-color: #3be97a; }
+.sheet-card .copy{
+  color: var(--ink); background: rgba(232,226,216,.06);
+  border: 1px solid rgba(232,226,216,.18);
+}
+.sheet-card .copy:hover{ background: rgba(232,226,216,.13); border-color: rgba(232,226,216,.4); }
+.sheet-card .shut{
+  color: var(--ink-faint); background: none; border: 0;
+  padding: 2px; letter-spacing: .13em;
+}
+.sheet-card .shut:hover{ color: var(--ink); }
+.sheet-card a.go:focus-visible,
+.sheet-card button:focus-visible{ outline: 2px solid var(--ember); outline-offset: 3px; }
+.sheet-url{
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; color: var(--ink-faint); word-break: break-all;
+  user-select: all; -webkit-user-select: all;
+  padding: 11px 13px; border-radius: 10px;
+  background: rgba(0,0,0,.4); border: 1px solid rgba(232,226,216,.08);
+}
 
 .nav button{
   appearance: none; cursor: pointer;
@@ -495,7 +553,10 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
   </div>
 
   <div class="bar">
-    <nav class="dots" id="dots" aria-label="Vælg citat"></nav>
+    <div class="progress">
+      <div class="track"><div class="fill" id="fill"></div></div>
+      <span class="count" id="count"></span>
+    </div>
 
     <div class="nav">
       <button type="button" id="prev">Tilbage</button>
@@ -529,6 +590,18 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
   <p class="fine" id="gate-fine">Med lyd &middot; Platon, Staten VII</p>
 </div>
 
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-h">
+  <div class="sheet-card">
+    <h2 id="sheet-h">Sådan får du musikken</h2>
+    <p>Åbn sangen i Spotify og lad den spille videre, mens du går gennem hulen.</p>
+    <a class="go" id="sheet-go" href="https://open.spotify.com/track/5PigCfYuaTai3cDdVZU4nL"
+       target="_blank" rel="noopener">Åbn Sometimes i Spotify</a>
+    <button type="button" class="copy" id="sheet-copy">Kopiér link</button>
+    <code class="sheet-url">https://open.spotify.com/track/5PigCfYuaTai3cDdVZU4nL</code>
+    <button type="button" class="shut" id="sheet-shut">Luk</button>
+  </div>
+</div>
+
 <div id="yt-host" aria-hidden="true"></div>
 
 <script>
@@ -545,58 +618,92 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
     {
       greek: "…ὥσπερ τοῖς θαυματοποιοῖς πρὸ τῶν ἀνθρώπων πρόκειται τὰ παραφράγματα, ὑπὲρ ὧν τὰ θαύματα δεικνύασιν.",
       saying: "Som når gøglerne stiller <span class=\"lift\">et skærmbræt</span> op foran folk, og hen over kanten lader de deres figurer optræde.",
-      name: "Platon",
-      src: "Staten VII, 514b",
-      note: "Ordet Platon bruger er παράφραγμα — en skærm. Bag den går folk forbi med figurer, ilden kaster dem op på væggen, og publikum sidder bundet fast og ser på. Det er skrevet omkring 375 f.Kr. Han har lige beskrevet en skærm, folk ikke kan holde op med at kigge på."
+      name: "Platon", src: "Staten VII, 514b",
+      note: "Ordet er παράφραγμα: en skærm. Platon beskriver en skærm, folk ikke kan holde op med at kigge på — 375 f.Kr."
     },
     {
       greek: "Ἄτοπον, ἔφη, λέγεις εἰκόνα καὶ δεσμώτας ἀτόπους. — Ὁμοίους ἡμῖν, ἦν δ᾽ ἐγώ.",
       saying: "«Et mærkeligt billede,» sagde han, «og mærkelige fanger.» — <span class=\"lift\">«De ligner os,»</span> svarede jeg.",
-      name: "Platon",
-      src: "Staten VII, 515a",
-      note: "Det er lignelsens hårdeste replik. Glaukon griner ad de stakkels fanger, og Sokrates lukker grinet ned med tre ord. Pointen er ikke, at nogen andre sidder i hulen. Pointen er, at du gør."
+      name: "Platon", src: "Staten VII, 515a",
+      note: "Glaukon griner ad fangerne. Sokrates lukker grinet med tre ord."
     },
     {
       greek: "Παντάπασι δή… οἱ τοιοῦτοι οὐκ ἂν ἄλλο τι νομίζοιεν τὸ ἀληθὲς ἢ τὰς τῶν σκευαστῶν σκιάς.",
       saying: "Sådanne mennesker ville ikke regne noget andet for virkeligt end <span class=\"lift\">skyggerne af de ting, man bar forbi.</span>",
-      name: "Platon",
-      src: "Staten VII, 515c",
-      note: "Her er mekanismen. Fangerne bliver ikke narret af nogen — de gætter bare på, at det, de ser hele tiden, er det, der findes. Det kræver ingen løgn. Det kræver kun, at der ikke er noget at sammenligne med."
+      name: "Platon", src: "Staten VII, 515c",
+      note: "Ingen narrer dem. Det kræver bare, at der ikke er noget at sammenligne med."
     },
     {
-      greek: "Οἷα ἂν πολλάκις νοήσῃς, τοιαύτη σοι ἔσται ἡ διάνοια· βάπτεται γὰρ ὑπὸ τῶν φαντασιῶν ἡ ψυχή.",
-      saying: "Som du tænker igen og igen, sådan bliver dit sind. For <span class=\"lift\">sjælen farves af sine billeder.</span>",
-      name: "Marcus Aurelius",
-      src: "Meditationer V, 16",
-      note: "βάπτεται — det samme ord som når stof lægges i farvebad. Ikke ét dyp, men gentagelsen, der gør farven permanent. Marcus Aurelius var romersk kejser, men skrev sin dagbog på græsk, og han skrev den til sig selv."
+      greek: "ὁρῶ γὰρ ἡμᾶς οὐδὲν ὄντας ἄλλο πλὴν εἴδωλ᾽ ὅσοιπερ ζῶμεν ἢ κούφην σκιάν.",
+      saying: "Jeg ser, at vi, der lever, ikke er andet end <span class=\"lift\">skyggebilleder eller en flygtig skygge.</span>",
+      name: "Sofokles", src: "Aias 125–126",
+      note: "Odysseus siger det, mens han ser sin fjende gå fra forstanden. Ikke skyggerne på væggen — os."
     },
     {
-      greek: "…ἐκ τῶν ὁμοίων ἐνεργειῶν αἱ ἕξεις γίνονται.",
-      saying: "Det er <span class=\"lift\">af de handlinger, der ligner hinanden,</span> at vores faste tilbøjeligheder opstår.",
-      name: "Aristoteles",
-      src: "Den nikomacheiske etik II, 1103b",
-      note: "ἕξις er den tilstand, gentagelsen har efterladt i dig — det, du nu gør uden at vælge det. Aristoteles taler om at øve sig i at spille lyre og bygge huse. Men reglen er den samme for det, du ser: det, der gentages, holder op med at føles som et valg."
+      greek: "θάνατός ἐστιν ὁκόσα ἐγερθέντες ὁρέομεν, ὁκόσα δὲ εὕδοντες ὕπνος.",
+      saying: "Alt hvad vi ser i vågen tilstand, er <span class=\"lift\">død.</span> Alt hvad vi ser sovende, er søvn.",
+      name: "Heraklit", src: "Fragment B21",
+      note: "Han vender det om: det vågne liv er den dybe søvn."
     },
     {
       greek: "Κακοὶ μάρτυρες ἀνθρώποισιν ὀφθαλμοὶ καὶ ὦτα βαρβάρους ψυχὰς ἐχόντων.",
       saying: "Øjne og ører er <span class=\"lift\">dårlige vidner</span> for mennesker, hvis sjæle ikke forstår sproget.",
-      name: "Heraklit",
-      src: "Fragment B107",
-      note: "Heraklit siger ikke, at sanserne lyver. Han siger, at de er vidner — og at et vidne kun er lige så godt som den, der forhører det. Uden noget at holde synet op imod, refererer du bare, hvad der blev vist."
+      name: "Heraklit", src: "Fragment B107",
+      note: "Sanserne lyver ikke. De er vidner — og et vidne er kun så godt som den, der forhører det."
+    },
+    {
+      greek: "ἐτεῇ δὲ οὐδὲν ἴδμεν· ἐν βυθῷ γὰρ ἡ ἀλήθεια.",
+      saying: "I virkeligheden ved vi intet. For sandheden ligger <span class=\"lift\">i en afgrund.</span>",
+      name: "Demokrit", src: "Fragment B117",
+      note: "βυθός er havets bund. Ikke skjult bag noget — bare for dybt nede til at nogen når den."
+    },
+    {
+      greek: "τίς δ᾽ οἶδεν εἰ τὸ ζῆν μέν ἐστι κατθανεῖν, τὸ κατθανεῖν δὲ ζῆν;",
+      saying: "Hvem ved, om det at leve er at være død — <span class=\"lift\">og det at dø er at leve?</span>",
+      name: "Euripides", src: "Fragment 638",
+      note: "Linjen var berømt nok til, at Platon citerer den. Ingen har svaret siden."
+    },
+    {
+      greek: "Οἷα ἂν πολλάκις νοήσῃς, τοιαύτη σοι ἔσται ἡ διάνοια· βάπτεται γὰρ ὑπὸ τῶν φαντασιῶν ἡ ψυχή.",
+      saying: "Som du tænker igen og igen, sådan bliver dit sind. For <span class=\"lift\">sjælen farves af sine billeder.</span>",
+      name: "Marcus Aurelius", src: "Meditationer V, 16",
+      note: "βάπτεται er ordet for stof lagt i farvebad. Det er gentagelsen, der gør farven permanent."
+    },
+    {
+      greek: "…ἐκ τῶν ὁμοίων ἐνεργειῶν αἱ ἕξεις γίνονται.",
+      saying: "Det er <span class=\"lift\">af de handlinger, der ligner hinanden,</span> at vores faste tilbøjeligheder opstår.",
+      name: "Aristoteles", src: "Den nikomacheiske etik II, 1103b",
+      note: "Det gentagne holder op med at føles som et valg."
     },
     {
       greek: "Ταράσσει τοὺς ἀνθρώπους οὐ τὰ πράγματα, ἀλλὰ τὰ περὶ τῶν πραγμάτων δόγματα.",
       saying: "Det er ikke tingene, der forstyrrer mennesker, men <span class=\"lift\">deres forestillinger om tingene.</span>",
-      name: "Epiktet",
-      src: "Håndbogen 5",
-      note: "Epiktet var slave i Rom, før han blev filosof, og han vidste bedre end de fleste, hvad man kan og ikke kan bestemme over. Afstanden mellem tingene og forestillingerne om dem — det er hele det rum, du har at arbejde i."
+      name: "Epiktet", src: "Håndbogen 5",
+      note: "Epiktet var slave, før han blev filosof. Afstanden derimellem er hele det rum, du har."
+    },
+    {
+      greek: "πᾶν ἐφήμερον, καὶ τὸ μνημονεῦον καὶ τὸ μνημονευόμενον.",
+      saying: "Alt varer <span class=\"lift\">én dag</span> — både den, der husker, og det, der bliver husket.",
+      name: "Marcus Aurelius", src: "Meditationer IV, 35",
+      note: "Skrevet af verdens mægtigste mand, til ingen andre end ham selv."
+    },
+    {
+      greek: "μὴ φῦναι τὸν ἅπαντα νικᾷ λόγον· τὸ δ᾽, ἐπεὶ φανῇ, βῆναι κεῖθεν ὅθεν περ ἥκει πολὺ δεύτερον.",
+      saying: "<span class=\"lift\">Aldrig at være født</span> overgår enhver anden tanke. Men er man først kommet til syne, er det næstbedste at vende hurtigst muligt tilbage, hvor man kom fra.",
+      name: "Sofokles", src: "Oidipus i Kolonos 1224–1227",
+      note: "Koret synger det til en blind, landsforvist olding. Sofokles var over 90, da han skrev det."
+    },
+    {
+      greek: "…τὸν ἐπιχειροῦντα λύειν τε καὶ ἀνάγειν, εἴ πως ἐν ταῖς χερσὶ δύναιντο λαβεῖν καὶ ἀποκτείνειν, ἀποκτεινύναι ἄν;",
+      saying: "Og den, der prøvede at løsne dem og føre dem op — <span class=\"lift\">ville de ikke slå ham ihjel,</span> hvis de kunne få fat i ham?",
+      name: "Platon", src: "Staten VII, 517a",
+      note: "Sådan ender lignelsen. Platon skrev den få år efter, at de henrettede Sokrates."
     },
     {
       greek: "Τελευταῖον δὴ οἶμαι τὸν ἥλιον… αὐτὸν καθ᾽ αὑτὸν ἐν τῇ αὑτοῦ χώρᾳ δύναιτ᾽ ἂν κατιδεῖν καὶ θεάσασθαι οἷός ἐστιν.",
-      saying: "Til sidst, tror jeg, ville han kunne se solen selv — ikke som genskin i vand eller på fremmed grund, men <span class=\"lift\">solen selv, på sin egen plads, som den er.</span>",
-      name: "Platon",
-      src: "Staten VII, 516b",
-      note: "Fangen, der slipper ud, bliver blændet og har ondt i øjnene, og det tager tid, før han kan se noget som helst. Platon lover ikke, at det er behageligt at komme ud. Han siger bare, at det kan lade sig gøre — og at ingen kan gøre det for dig."
+      saying: "Til sidst ville han kunne se solen selv — ikke som genskin i vand, men <span class=\"lift\">solen selv, på sin egen plads, som den er.</span>",
+      name: "Platon", src: "Staten VII, 516b",
+      note: "Han bliver blændet og får ondt i øjnene først. Platon lover ikke, det er behageligt — kun at det kan lade sig gøre."
     }
   ];
 
@@ -609,9 +716,12 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
   var card = $("card"), gate = $("gate"), stage = $("stage");
   var elGreek = $("q-greek"), elSaying = $("q-saying"),
       elName = $("q-name"), elSrc = $("q-src"), elNote = $("q-note");
-  var dots = $("dots"), player = $("player"), srcLabel = $("src-label");
+  var fill = $("fill"), count = $("count");
+  var player = $("player"), srcLabel = $("src-label"), sheet = $("sheet");
 
-  var index = 0, swapping = false;
+  var SPOTIFY_URL = "https://open.spotify.com/track/5PigCfYuaTai3cDdVZU4nL";
+
+  var index = 0, target = 0, swapping = false;
 
   /* ============================================================
      VISNING AF CITATER
@@ -625,49 +735,57 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
     elSrc.textContent = q.src;
     elNote.textContent = q.note;
 
-    Array.prototype.forEach.call(dots.children, function (b, n) {
-      b.setAttribute("aria-current", n === i ? "true" : "false");
-    });
+    fill.style.width = ((i + 1) / QUOTES.length * 100) + "%";
+    count.textContent = (i + 1) + " / " + QUOTES.length;
 
     // Lyset stiger, efterhånden som man kommer længere op mod udgangen
     var ascent = QUOTES.length > 1 ? i / (QUOTES.length - 1) : 0;
     document.documentElement.style.setProperty("--ascent", (ascent * ascent).toFixed(3));
   }
 
+  // target er altid dér, vi er på vej hen. Trykker man hurtigt flere gange,
+  // flytter målet sig med — i stedet for at tryk under overgangen går tabt.
   function show(i, instant) {
     i = (i % QUOTES.length + QUOTES.length) % QUOTES.length;
-    if (i === index && !instant) return;
 
-    if (instant) { index = i; paint(i); return; }
-    if (swapping) return;
+    if (instant) { index = target = i; paint(i); return; }
+    if (i === target) return;
 
+    target = i;
+    if (!swapping) { swap(); }
+  }
+
+  function swap() {
     swapping = true;
     card.classList.add("out");
     window.setTimeout(function () {
-      index = i;
-      paint(i);
+      index = target;
+      paint(index);
       var vp = card.parentElement;
       if (vp && vp.scrollTop) { vp.scrollTop = 0; }
       card.classList.remove("out");
       swapping = false;
-    }, 620);
+    }, 500);
   }
 
-  QUOTES.forEach(function (q, i) {
-    var b = document.createElement("button");
-    b.type = "button";
-    b.innerHTML = "<span></span>";
-    b.setAttribute("aria-label", "Citat " + (i + 1) + " af " + QUOTES.length + ": " + q.name);
-    b.addEventListener("click", function () { show(i); });
-    dots.appendChild(b);
-  });
+  $("next").addEventListener("click", function () { show(target + 1); });
+  $("prev").addEventListener("click", function () { show(target - 1); });
 
-  $("next").addEventListener("click", function () { show(index + 1); });
-  $("prev").addEventListener("click", function () { show(index - 1); });
+  // Stryg til side — på en telefon er det den naturlige bevægelse
+  var swipeFrom = null;
+  stage.addEventListener("touchstart", function (e) {
+    swipeFrom = e.changedTouches[0].clientX;
+  }, { passive: true });
+  stage.addEventListener("touchend", function (e) {
+    if (swipeFrom === null) return;
+    var dx = e.changedTouches[0].clientX - swipeFrom;
+    swipeFrom = null;
+    if (Math.abs(dx) > 55) { show(target + (dx < 0 ? 1 : -1)); }
+  }, { passive: true });
 
   document.addEventListener("keydown", function (e) {
-    if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); show(index + 1); }
-    if (e.key === "ArrowLeft") { e.preventDefault(); show(index - 1); }
+    if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); show(target + 1); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); show(target - 1); }
   });
 
   show(0, true);
@@ -850,8 +968,76 @@ body.entered .stage{ opacity: 1; pointer-events: auto; }
       return;
     }
 
-    // mode === "link" (eller lyden er slet ikke startet endnu)
-    $("open-spotify").click();
+    // mode === "link", eller lyden er slet ikke startet endnu
+    openSheet();
+  });
+
+  /* ------------------------------------------------------------
+     Åbn-sangen-panelet
+
+     Et link med target="_blank" bliver blokeret lydløst i nogle
+     indlejringer, og et programmatisk klik på det endnu oftere. Derfor
+     åbner knapperne panelet i stedet: så sker der altid noget synligt,
+     og derinde er både et rigtigt link, en kopiknap og selve adressen.
+     ------------------------------------------------------------ */
+
+  function openSheet() {
+    sheet.hidden = false;
+    $("sheet-go").focus();
+  }
+
+  function closeSheet() {
+    sheet.hidden = true;
+  }
+
+  function toSheet(el) {
+    if (!el) return;
+    el.addEventListener("click", function (e) {
+      e.preventDefault();
+      openSheet();
+    });
+  }
+
+  toSheet($("open-spotify"));
+  toSheet(document.querySelector(".gate-link"));
+
+  $("sheet-shut").addEventListener("click", closeSheet);
+  sheet.addEventListener("click", function (e) {
+    if (e.target === sheet) { closeSheet(); }
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !sheet.hidden) { closeSheet(); }
+  });
+
+  $("sheet-copy").addEventListener("click", function () {
+    var btn = this;
+    var sig = function (tekst) {
+      btn.textContent = tekst;
+      window.setTimeout(function () { btn.textContent = "Kopiér link"; }, 2200);
+    };
+
+    // Lykkes udklipsholderen ikke, markerer vi adressen, så den kan kopieres i hånden
+    var marker = function () {
+      try {
+        var el = document.querySelector(".sheet-url");
+        var r = document.createRange();
+        r.selectNodeContents(el);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(r);
+        sig("Markeret \u2014 kopiér den");
+      } catch (err) {
+        sig("Kopiér adressen nedenfor");
+      }
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(SPOTIFY_URL).then(function () {
+        sig("Kopieret \u2713");
+      }, marker);
+    } else {
+      marker();
+    }
   });
 
   /* ============================================================
